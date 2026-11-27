@@ -61,8 +61,14 @@ The template gives:
    gh label create type/ci --description "A problem with CI or a check"
    ```
 
-5. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
+5. Set how PRs merge. This repo setting applies to the pull requests into every branch. It turns off squash merge and rebase merge. It makes the PR title the default subject of the merge commit, with an empty default body. Run the command in the clone. `gh` fills in `{owner}` and `{repo}` from the clone:
+
+   ```sh
+   gh api -X PATCH repos/{owner}/{repo} -F allow_squash_merge=false -F allow_rebase_merge=false -f merge_commit_title=PR_TITLE -f merge_commit_message=BLANK
+   ```
+
+6. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
    - Public repo, or private repo on a paid GitHub plan: use the ruleset.
    - Private repo on GitHub Free: use the Git hook. GitHub Free does not enforce rulesets in private repos.
-6. Replace this README with the usage docs of your project (see Where to write in `docs/doc-rules.md`).
-7. Replace `LICENSE` if your project uses a different license or copyright holder.
+7. Replace this README with the usage docs of your project (see Where to write in `docs/doc-rules.md`).
+8. Replace `LICENSE` if your project uses a different license or copyright holder.

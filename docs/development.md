@@ -57,7 +57,7 @@ To upgrade the tool, change the versions in `tools/markdown-links/package.json`.
 
 ## Branch protection
 
-`main` accepts changes only through a PR that merges with a merge commit (see [Branches and PRs in CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-prs)). The repo enforces this with one of the two methods below.
+`main` accepts changes only through a PR (see [Branches and PRs in CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-prs)). The repo enforces this with one of the two methods below.
 
 <!-- TEMPLATE: Keep one method and delete the other. Use the ruleset if the repo is public, or if the owner has a paid GitHub plan. GitHub Free does not enforce rulesets in private repos. To delete the Git hook method, also delete `.githooks/`. To delete the ruleset method, also delete `.github/rulesets/`. -->
 
@@ -84,12 +84,6 @@ gh api -X PUT repos/{{OWNER}}/{{REPO}}/rulesets/$id --input .github/rulesets/mai
 
 ```sh
 git config core.hooksPath .githooks
-```
-
-The maintainer turns off squash merge and rebase merge once:
-
-```sh
-gh repo edit {{OWNER}}/{{REPO}} --enable-squash-merge=false --enable-rebase-merge=false
 ```
 
 If the maintainer must push directly to `main`, set this option in their clone. The option goes only into the local `.git/config`:
