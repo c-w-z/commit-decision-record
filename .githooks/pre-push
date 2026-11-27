@@ -4,14 +4,34 @@
 # to push directly to main.
 ALLOW_MAIN_PUSH=$(git config --bool workflow.allowMainPush)
 
-if [ "$ALLOW_MAIN_PUSH" = "true" ]; then
-    exit 0
-fi
+# Return 0 if the object name has only zeros. Git gives it for a ref that does not exist.
+is_zero() {
+    case "$1" in
+        *[!0]*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
 
 # Read the refs being pushed.
 while read local_ref local_sha remote_ref remote_sha
 do
-    if [ "$remote_ref" = "refs/heads/main" ]; then
+    if [ "$remote_ref" != "refs/heads/main" ]; then
+        continue
+    fi
+
+    # Nobody can delete or rewrite main, also with workflow.allowMainPush.
+    # If the remote commit is not in this clone, merge-base fails and the push is blocked.
+    if is_zero "$local_sha" ||
+        { ! is_zero "$remote_sha" &&
+          ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; }; then
+        echo ""
+        echo "ERROR: This push deletes or rewrites main. This is not allowed."
+        echo "If main on the remote has new commits, run git pull first."
+        echo ""
+        exit 1
+    fi
+
+    if [ "$ALLOW_MAIN_PUSH" != "true" ]; then
         echo ""
         echo "ERROR: Direct push to main is not allowed."
         echo "Please create a feature branch and open a PR."

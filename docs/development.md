@@ -86,7 +86,7 @@ gh api -X PUT repos/{{OWNER}}/{{REPO}}/rulesets/$id --input .github/rulesets/mai
 git config core.hooksPath .githooks
 ```
 
-If the maintainer must push directly to `main`, set this option in their clone. The option goes only into the local `.git/config`:
+If the maintainer must push directly to `main`, set this option in their clone. The hook still blocks a push that deletes or rewrites `main`. The option goes only into the local `.git/config`:
 
 ```sh
 git config --bool workflow.allowMainPush true
