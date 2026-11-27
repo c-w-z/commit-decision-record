@@ -61,10 +61,10 @@ The template gives:
    gh label create type/ci --description "A problem with CI or a check"
    ```
 
-5. Turn off squash merge and rebase merge. This repo setting applies to the pull requests into every branch:
+5. Set how PRs merge. This repo setting applies to the pull requests into every branch. It turns off squash merge and rebase merge. It makes the PR title the default subject of the merge commit, with an empty default body. Run the command in the clone. `gh` fills in `{owner}` and `{repo}` from the clone:
 
    ```sh
-   gh repo edit {{OWNER}}/{{REPO}} --enable-squash-merge=false --enable-rebase-merge=false
+   gh api -X PATCH repos/{owner}/{repo} -F allow_squash_merge=false -F allow_rebase_merge=false -f merge_commit_title=PR_TITLE -f merge_commit_message=BLANK
    ```
 
 6. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
