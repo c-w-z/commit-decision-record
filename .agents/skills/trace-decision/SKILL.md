@@ -11,7 +11,7 @@ Docs show only the current state. Commit bodies show why a decision changed (see
 
 ## Steps
 
-1. **Read the current docs first.** Look at the reason next to the decision and the rejected options. These usually answer the question.
+1. **Read the current docs first.** Look at the reason, the accepted costs and the rejected options next to the decision. These usually answer the question.
 2. **Find the history of a doc section:**
    ```bash
    git log --format='%h %ad %s' --date=short -L '/^## Modules/,/^## /:docs/design/architecture.md'
@@ -32,8 +32,9 @@ Do not use `git log --first-parent`. It hides the commits inside a merged PR.
 
 ## Report
 
-- Keep the current reason (from the docs) separate from the reason at that time (from commits).
-- Give the commit hash and date for each reason.
-- An older commit can contain only the change and no reason. In that case, say that you did not find the reason. Do not give a guess from the diff as a fact.
+- Keep the current reason and accepted costs (from the docs) separate from the reason and costs at that time (from commits).
+- If the question is about a downside, say if a design doc or a `Cost:` line lists it.
+- Give the commit hash and date for each reason and cost.
+- A commit can have no reason or no `Cost:` line. In that case, say that you did not find it. Do not conclude that the author accepted or missed a downside. Do not give a guess from the diff as a fact.
 - Before you overturn a decision, give the user what you found. The maintainer decides.
 - After the maintainer decides, update the docs as `docs/doc-rules.md` says. Put `Supersedes:` in the commit body.
