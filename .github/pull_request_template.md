@@ -18,8 +18,7 @@ Closes # <!-- issue id here -->
 
 <!-- Write what you did and what you saw. For a visual change, attach a screenshot. -->
 
-- [ ] The commands in Build and test in `docs/development.md` pass
-
 ## Checks
 
+- [ ] If you changed code, the commands in Build and test in `docs/development.md` pass
 - [ ] The same commit updates the affected docs and `--help` text
