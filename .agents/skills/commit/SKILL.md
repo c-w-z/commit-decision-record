@@ -27,9 +27,10 @@ The rules and the message format are in Commits in `CONTRIBUTING.md`. This skill
 
 ## Safety
 
-- Do not use `--no-verify`. Do not force-push, except in the next item. Do not rewrite commits that are on a remote, except in the next item.
-- If your PR branch has a conflict with `main`, rebase the branch on `main`. Then ask the user and push with `git push --force-with-lease`. Use this only on a PR branch that is not merged.
+- Do not use `--no-verify`.
+- Do not force-push `main`. Do not rewrite the commits that are in `main`.
 - You can amend or rebase unpushed commits that you made in this task.
+- To rewrite other commits of a PR branch that is not merged, for example pushed commits or commits that you did not make, ask the user first. Then push with `git push --force-with-lease`.
 - If a hook fails, fix the cause and make the commit again.
 
 ## After you commit
