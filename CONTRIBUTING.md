@@ -30,6 +30,7 @@ This file gives the rules for commits, pull requests (PRs) and issues. People an
 
 Why: <the reason>                           (only when the diff does not show the reason)
 Rejected: <alternative> — <why not>         (one line for each alternative that you considered)
+Cost: <a downside of the chosen option>     (one line for each known downside that you accept)
 Evidence: <a fact that supports Why>        (only when a fact outside the diff and CI supports Why)
 Supersedes: <the earlier decision>          (only when this commit overturns a decision)
 Design: <doc>#<section>                     (only for code that implements a design decision)
@@ -40,7 +41,8 @@ BREAKING CHANGE: <what breaks and how to migrate>   (use with `!` after the type
 - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `chore`.
 - Write the message in English. Keep doc and section names as they are (`architecture#modules`).
 - `Evidence` gives facts that the diff and CI do not show. Examples are a measurement, an experiment or the behavior of an external program. Do not write build or test results, or the results of a grep or a link check. CI checks them.
-- Write each fact in one field only. A common mistake is to give the reason against an alternative in `Why` and again in `Rejected`.
+- `Cost` gives a downside that the chosen option keeps. A later reader then knows that the downside was accepted and not missed. To remove an accepted downside, first overturn the decision.
+- Write each fact in one field only. A common mistake is to give the reason against an alternative in `Why` and again in `Rejected`. Another is to give a downside of the chosen option in `Why` and not in `Cost`.
 - `Design` connects code to its design section. Do not add it to a docs commit. A docs change is the design itself.
 
 ## Text for outside readers
