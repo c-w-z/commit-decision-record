@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  # Decides which checks the change needs. Skipped jobs count as passed.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      docs: ${{ steps.diff.outputs.docs }}
+    steps:
+      # For a PR, HEAD is GitHub's test merge commit: HEAD^1 is the base, HEAD^2 is the PR head.
+      # For a push to main from a merged PR, HEAD is the merge commit with the same parents.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # No pipefail: grep -q can exit before printf finishes writing.
+          set -eu
+          set_outputs() { echo "code=$1" >> "$GITHUB_OUTPUT"; echo "docs=$2" >> "$GITHUB_OUTPUT"; }
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            base='HEAD^1'
+          elif git rev-parse -q --verify 'HEAD^2' > /dev/null; then
+            # The PR branch already had all of main, so the merge commit has the same tree as the PR head, and the PR checks covered it.
+            # Otherwise main got other commits after the PR checks, and the combination is new.
+            if git merge-base --is-ancestor 'HEAD^1' 'HEAD^2'; then set_outputs false false; else set_outputs true true; fi
+            exit 0
+          elif git merge-base --is-ancestor "$BEFORE" HEAD 2> /dev/null; then
+            # A direct push: compare with main before the push, because one push can hold several commits.
+            base=$BEFORE
+          else
+            # A force push or a new branch has no earlier state to compare with.
+            set_outputs true true; exit 0
+          fi
+          # Without quotePath=false, Git quotes paths with non-ASCII characters, and the patterns below do not match them.
+          changed=$(git -c core.quotePath=false diff --name-only "$base" HEAD)
+          # A deleted or renamed file of any type can break a relative link in a .md file.
+          removed=$(git -c core.quotePath=false diff --name-only --diff-filter=DR "$base" HEAD)
+          code=false; docs=false
+          # Files that the build and the tests do not read. A file type that is not listed counts as code.
+          # TEMPLATE: Add the paths of your project that the build and the tests do not read.
+          noncode='\.md$|^\.github/ISSUE_TEMPLATE/|^docs/|^tools/markdown-links/|^\.githooks/|^\.gitignore$|^LICENSE$'
+          if printf '%s' "$changed" | grep -qvE "$noncode"; then code=true; fi
+          if printf '%s' "$changed" | grep -qE '\.md$|^tools/markdown-links/|^\.github/workflows/' || [ -n "$removed" ]; then docs=true; fi
+          set_outputs "$code" "$docs"
+
+  # TEMPLATE: Remove the comment marks, and add the setup step for your language.
+  # build-and-test:
+  #   needs: changes
+  #   if: needs.changes.outputs.code == 'true'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: {{BUILD_COMMAND}}
+  #     - run: {{TEST_COMMAND}}
+
+  # Fails when a relative link in a tracked .md file points to a missing file, or an anchor matches no heading.
+  # Anchors follow the heading ids that GitHub makes. Links in code blocks and inline code are not checked.
+  # The tool works offline, so CI does not depend on outside sites. It does not check http(s) links.
+  # It checks a link to a file of this repo on GitHub as a relative link.
+  markdown-links:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # npm ci installs the exact versions in package-lock.json and checks their hashes.
+      - run: npm ci --prefix tools/markdown-links
+      # All files go to one remark run, because the plugin needs every file to check headings in links between files.
+      - run: >-
+          git ls-files -z '*.md'
+          | xargs -0 tools/markdown-links/node_modules/.bin/remark
+          --use ./tools/markdown-links/node_modules/remark-validate-links/index.js
+          --frail --quiet --no-stdout
+
+  no-merge-commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # The default checkout of a PR is a test merge commit. The check needs the PR head and full history.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      # See "Branches and PRs" in CONTRIBUTING.md.
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          merges=$(git log --merges --oneline "$BASE..$HEAD")
+          if [ -n "$merges" ]; then
+            echo "::error::The PR branch has merge commits. Rebase it on the base branch instead (CONTRIBUTING.md, Branches and PRs)."
+            echo "$merges"
+            exit 1
+          fi

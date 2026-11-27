@@ -1,0 +1,49 @@
+name: Refactor
+description: A code change that does not change behavior, for example to merge duplicate code, move code to the correct module or make code easier to test
+labels: ["type/refactor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The reader did not see your conversation or notes. A reader must understand the text with only this issue. Do not use names that only you know. Do not write "earlier" or "above".
+  - type: textarea
+    id: files
+    attributes:
+      label: Code
+      description: The names of the files, types or functions.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `git rev-parse --short HEAD` in the checkout that you read.
+      placeholder: "For example, afbe95f"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Why is the current code difficult to change or test, or easy to break? Give a specific example, for example the number of copies, or which code must know the details of which other code.
+    validations:
+      required: true
+  - type: textarea
+    id: direction
+    attributes:
+      label: Direction
+      description: How do you want to change the code? Which behaviors must stay the same (for example the [rules](https://github.com/{{OWNER}}/{{REPO}}/blob/main/docs/design/overview.md#rules))?
+    validations:
+      required: true
+  - type: textarea
+    id: timing
+    attributes:
+      label: Timing
+      description: When must this work happen? For example now, or together with a feature. Give the reason.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: More information
+      description: Other solutions that you thought about, and the public interfaces or docs that the change affects.

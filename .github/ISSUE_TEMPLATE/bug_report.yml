@@ -1,0 +1,54 @@
+name: Bug report
+description: An error, a wrong result or a crash
+labels: ["type/bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The reader did not see your conversation or notes. A reader must understand the text with only this issue. Do not use names that only you know. Do not write "earlier" or "above".
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+      description: What did you expect to see? What did you see?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `git rev-parse --short HEAD` in the checkout that you ran.
+      placeholder: "For example, afbe95f"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: The OS version and the versions of the tools that the problem depends on.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        The related part of the log or the error output.
+        Logs can contain your user name and paths. Check the text before you paste it.
+      render: text

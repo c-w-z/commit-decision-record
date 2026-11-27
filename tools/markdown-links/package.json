@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "description": "Checks relative links and heading anchors in the Markdown files of this repo. CI runs it; see docs/development.md.",
+  "dependencies": {
+    "remark-cli": "12.0.1",
+    "remark-validate-links": "13.1.0"
+  }
+}

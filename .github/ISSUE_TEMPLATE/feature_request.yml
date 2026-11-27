@@ -1,0 +1,30 @@
+name: Feature request
+description: A small feature or improvement. Start a large idea in Discussions
+labels: ["type/feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a very small feature, or a feature with a clear direction, open an issue.
+        For an idea with a large effect (for example, a change to a design rule), start a talk in [Discussions](https://github.com/{{OWNER}}/{{REPO}}/discussions) first.
+
+        The reader did not see your conversation or notes. A reader must understand the text with only this issue. Do not use names that only you know. Do not write "earlier" or "above".
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What is difficult now, or what is missing?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How must the feature work?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: More information
+      description: Reference images, similar examples, or other solutions that you thought about.

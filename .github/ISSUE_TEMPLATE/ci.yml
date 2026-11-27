@@ -1,0 +1,58 @@
+name: CI
+description: A CI job fails for a reason outside the change, is slow or flaky, or a check is missing
+labels: ["type/ci"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The reader did not see your conversation or notes. A reader must understand the text with only this issue. Do not use names that only you know. Do not write "earlier" or "above".
+
+        If a job fails because of an error in your change, fix the change. Open this issue only when the job, the workflow or a check script is the problem.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - A job fails, but the change is correct
+        - A job fails only sometimes (flaky)
+        - A job is too slow
+        - A job does not run when it must, or runs when it does not have to
+        - A check is missing
+    validations:
+      required: true
+  - type: input
+    id: job
+    attributes:
+      label: Job
+      description: The workflow file and the job name. For a missing check, write "none".
+      placeholder: For example, `.github/workflows/ci.yml`, job `markdown-links`
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: |
+        What happened, and what did you expect?
+        For a missing check, which error can go into `main` now? Give an example.
+    validations:
+      required: true
+  - type: textarea
+    id: run
+    attributes:
+      label: Run
+      description: |
+        Links to the failed or slow runs, and the commit or PR of each run.
+        For a flaky job, how many runs failed out of how many?
+      placeholder: For example, https://github.com/{{OWNER}}/{{REPO}}/actions/runs/... on PR #12. 2 of 5 runs failed
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The related part of the job log.
+      render: text
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How do you want to change the workflow or the check? Other solutions that you thought about.

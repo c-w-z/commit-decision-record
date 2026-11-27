@@ -1,0 +1,57 @@
+name: Documentation
+description: A doc or comment is wrong, unclear or missing, or does not agree with the code or another doc
+labels: ["type/documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The reader did not see your conversation or notes. A reader must understand the text with only this issue. Do not use names that only you know. Do not write "earlier" or "above".
+
+        If a doc and the code do not agree, do not decide which side is correct. The maintainer decides (see [Precedence](https://github.com/{{OWNER}}/{{REPO}}/blob/main/docs/doc-rules.md#precedence)). Only the maintainer can change a [rule](https://github.com/{{OWNER}}/{{REPO}}/blob/main/docs/design/overview.md#rules).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Wrong or out of date
+        - Unclear
+        - Missing
+        - Does not agree with the code
+        - Does not agree with another doc
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: The file and the section, or the file and the line for a comment. For a conflict, give both sides.
+      placeholder: For example, `docs/design/architecture.md` section Modules, and `src/app.ts`
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `git rev-parse --short HEAD` in the checkout that you read.
+      placeholder: "For example, afbe95f"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: |
+        What does the text say now, and why is it a problem?
+        For a missing doc, which question could you not answer with the repo?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: The code, the data file, the command output or the behavior that shows the problem.
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The text or the change that you suggest.
