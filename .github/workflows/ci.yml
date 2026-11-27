@@ -46,7 +46,7 @@ jobs:
           code=false; docs=false
           # Files that the build and the tests do not read. A file type that is not listed counts as code.
           # TEMPLATE: Add the paths of your project that the build and the tests do not read.
-          noncode='\.md$|^\.github/ISSUE_TEMPLATE/|^docs/|^tools/markdown-links/|^\.githooks/|^\.gitignore$|^LICENSE$'
+          noncode='\.md$|^\.github/ISSUE_TEMPLATE/|^\.github/rulesets/|^docs/|^tools/markdown-links/|^\.githooks/|^\.gitignore$|^LICENSE$'
           if printf '%s' "$changed" | grep -qvE "$noncode"; then code=true; fi
           if printf '%s' "$changed" | grep -qE '\.md$|^tools/markdown-links/|^\.github/workflows/' || [ -n "$removed" ]; then docs=true; fi
           set_outputs "$code" "$docs"

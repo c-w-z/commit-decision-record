@@ -7,15 +7,16 @@ Install, settings and general use are in the [README](../README.md). The rules f
 <!-- TEMPLATE: List the tools and versions to install, and the environment variables to set. -->
 
 1. Install Git and the tools of the project.
-2. Clone the repo, enable the Git hook (see [Git hook](#git-hook)), then build and test:
+2. Clone the repo, then build and test:
 
    ```sh
    git clone https://github.com/{{OWNER}}/{{REPO}}.git
    cd {{REPO}}
-   git config core.hooksPath .githooks
    {{BUILD_COMMAND}}
    {{TEST_COMMAND}}
    ```
+
+3. If [Branch protection](#branch-protection) gives a setup for each clone, do it.
 
 ## Build and test
 
@@ -54,9 +55,42 @@ git ls-files -z '*.md' | xargs -0 tools/markdown-links/node_modules/.bin/remark 
 
 To upgrade the tool, change the versions in `tools/markdown-links/package.json`. Run `npm install --prefix tools/markdown-links`. Commit `package.json` and `package-lock.json` together.
 
-## Git hook
+## Branch protection
 
-`.githooks/pre-push` blocks a direct push to `main` (see [Branches and PRs in CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-prs)). Enable the hook once in each clone with `git config core.hooksPath .githooks` (step 2 of [First setup](#first-setup)).
+`main` accepts changes only through a PR that merges with a merge commit (see [Branches and PRs in CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-prs)). The repo enforces this with one of the two methods below.
+
+<!-- TEMPLATE: Keep one method and delete the other. Use the ruleset if the repo is public, or if the owner has a paid GitHub plan. GitHub Free does not enforce rulesets in private repos. To delete the Git hook method, also delete `.githooks/`. To delete the ruleset method, also delete `.github/rulesets/`. -->
+
+### Ruleset
+
+GitHub enforces `.github/rulesets/main.json` on the default branch. The file gives the rules. Contributors do not have to set up anything.
+
+The maintainer applies the file once:
+
+```sh
+gh api -X POST repos/{{OWNER}}/{{REPO}}/rulesets --input .github/rulesets/main.json
+```
+
+When you add or rename a CI job, change `required_status_checks` in the file. After each change to the file, the maintainer applies it again:
+
+```sh
+id=$(gh api repos/{{OWNER}}/{{REPO}}/rulesets --jq '.[] | select(.name == "main") | .id')
+gh api -X PUT repos/{{OWNER}}/{{REPO}}/rulesets/$id --input .github/rulesets/main.json
+```
+
+### Git hook
+
+`.githooks/pre-push` blocks a direct push to `main`. The hook runs only on the computer of the contributor, and GitHub does not enforce it. Enable the hook once in each clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+The maintainer turns off squash merge and rebase merge once:
+
+```sh
+gh repo edit {{OWNER}}/{{REPO}} --enable-squash-merge=false --enable-rebase-merge=false
+```
 
 If the maintainer must push directly to `main`, set this option in their clone. The option goes only into the local `.git/config`:
 

@@ -9,7 +9,7 @@ This file gives the rules for commits, pull requests (PRs) and issues. People an
 
 ## Branches and PRs
 
-- Work on a feature branch. The pre-push hook blocks a push to `main` (see [Git hook](docs/development.md#git-hook)).
+- Work on a feature branch. `main` accepts changes only through a PR (see [Branch protection](docs/development.md#branch-protection)).
 - One PR holds one group of decisions that a reviewer can judge alone. If a PR holds two groups, split it into two PRs.
 - The maintainer merges a PR with a merge commit.
 - If your PR branch has a conflict with `main`, rebase the branch on the latest `main`. Then update the PR with `git push --force-with-lease`. Do not merge `main` into the branch. The CI job `no-merge-commits` fails on a PR branch that has a merge commit.
@@ -39,7 +39,7 @@ BREAKING CHANGE: <what breaks and how to migrate>   (use with `!` after the type
 
 - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `chore`.
 - Write the message in English. Keep doc and section names as they are (`architecture#modules`).
-- `Evidence` gives facts that the diff and CI do not show. Examples are a measurement, an experiment or the behavior of an external program. Do not write build or test results, or the results of a grep or a link check. CI and the hooks check them.
+- `Evidence` gives facts that the diff and CI do not show. Examples are a measurement, an experiment or the behavior of an external program. Do not write build or test results, or the results of a grep or a link check. CI checks them.
 - Write each fact in one field only. A common mistake is to give the reason against an alternative in `Why` and again in `Rejected`.
 - `Design` connects code to its design section. Do not add it to a docs commit. A docs change is the design itself.
 

@@ -23,12 +23,12 @@ The template gives:
 - `AGENTS.md`: hard conventions for AI assistants, and pointers to the docs and skills.
 - `CONTRIBUTING.md`: the formats and rules for commits, pull requests (PRs) and issues.
 - `docs/doc-rules.md`: what to document, where, and how to write it.
-- `docs/development.md`: setup, build, test, CI and the Git hook.
+- `docs/development.md`: setup, build, test, CI and branch protection.
 - `docs/design/`: the design rules, the glossary and the architecture.
 - `SECURITY.md`: how to report a vulnerability.
 - `.agents/skills/`: procedures for AI assistants (commit, PR, reviews, decision history).
 - `.github/`: issue templates, the PR template and the CI workflow.
-- `.githooks/pre-push`: blocks a direct push to `main`.
+- `.github/rulesets/main.json` and `.githooks/pre-push`: two methods to protect `main`. A project keeps one of them.
 
 ## Use the template
 
@@ -50,7 +50,7 @@ The template gives:
    git grep -n -e '{{' -e 'TEMPLATE:' -- ':!README.md'
    ```
 
-3. In `.github/workflows/ci.yml`, remove the comment marks from the `build-and-test` job. Add the setup step for your language.
+3. In `.github/workflows/ci.yml`, remove the comment marks from the `build-and-test` job. Add the setup step for your language. Add `build-and-test` to `required_status_checks` in `.github/rulesets/main.json`.
 4. Make the labels that the issue templates use:
 
    ```sh
@@ -61,6 +61,8 @@ The template gives:
    gh label create type/ci --description "A problem with CI or a check"
    ```
 
-5. Enable the Git hook in each clone: `git config core.hooksPath .githooks`.
+5. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
+   - Public repo, or private repo on a paid GitHub plan: use the ruleset.
+   - Private repo on GitHub Free: use the Git hook. GitHub Free does not enforce rulesets in private repos.
 6. Replace this README with the usage docs of your project (see Where to write in `docs/doc-rules.md`).
 7. Replace `LICENSE` if your project uses a different license or copyright holder.

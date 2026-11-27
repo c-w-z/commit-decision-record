@@ -21,7 +21,7 @@ Each fact has one source. Put the source where a change to the fact always touch
 | Design | `docs/design/` | Contributors | Mechanisms, decisions, current reasons, rejected options | Methods, fields, call sequences |
 | Glossary | [Glossary](design/GLOSSARY.md) | All | Design terms and their code names | Explanations of mechanisms |
 | Usage | `README.md` | Users | Install, start, stop, settings, update | Architecture, development process |
-| Development | `docs/development.md` | Contributors and AI | What a contributor must do by hand: complete commands to build, run and check, the folder map, how to reproduce and fix a failed CI job, the Git hook setup | Design reasons, content that a config file or script already gives, behavior that tools handle automatically |
+| Development | `docs/development.md` | Contributors and AI | What a contributor must do by hand: complete commands to build, run and check, the folder map, how to reproduce and fix a failed CI job, the branch protection setup | Design reasons, content that a config file or script already gives, behavior that tools handle automatically |
 | Parameters | The `--help` text of programs and scripts | Contributors and AI | What each parameter does, its default value, examples | — |
 | Contribution rules | `CONTRIBUTING.md` | Contributors and AI | Formats and procedures for commits, PRs and issues, the checks before a commit | How to write docs (this file) |
 | Security policy | `SECURITY.md` | People who report a security problem | Supported versions, the private channel, what to include, the scope | Details of vulnerabilities |
