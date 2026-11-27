@@ -12,6 +12,7 @@ This file gives the rules for commits, pull requests (PRs) and issues. People an
 - Work on a feature branch. `main` accepts changes only through a PR (see [Branch protection](docs/development.md#branch-protection)).
 - One PR holds one group of decisions that a reviewer can judge alone. If a PR holds two groups, split it into two PRs.
 - The maintainer merges a PR with a merge commit.
+- Before the merge, you can amend, reorder and split the commits of a PR branch, for example to fix the commit structure after a review. Then update the PR with `git push --force-with-lease`. Do not force-push `main`, and do not rewrite the commits that are in `main`.
 - If your PR branch has a conflict with `main`, rebase the branch on the latest `main`. Then update the PR with `git push --force-with-lease`. Do not merge `main` into the branch. The CI job `no-merge-commits` fails on a PR branch that has a merge commit.
 
 ## Commits
@@ -92,3 +93,4 @@ AI assistants search history with the skill `trace-decision`. They use it only w
 | Squash merge | The commits of a PR and their `Why` become one commit. Moves and rewrites can then not be traced apart |
 | Rebase merge | It keeps the commits, but their hashes change, and the PR boundary disappears. A merge commit keeps the boundary and the hashes |
 | Merge `main` into a PR branch to fix a conflict | The PR commits go into `main` as they are, so this merge commit stays in the history. It adds a branch that has no relation to a decision. A rebase changes hashes too, but those commits are not in `main` before the PR merges |
+| Never rewrite pushed commits | A review can find a commit that breaks the rules in [Commits](#commits), for example a move and a rewrite in one commit. A new commit cannot split it. Only the commits in `main` must keep their hashes, and the commits of a PR branch are not in `main` before the merge |
