@@ -61,7 +61,7 @@ The template gives:
    gh label create type/ci --description "A problem with CI or a check"
    ```
 
-5. The maintainer turns off squash merge and rebase merge once:
+5. Turn off squash merge and rebase merge. This repo setting applies to the pull requests into every branch:
 
    ```sh
    gh repo edit {{OWNER}}/{{REPO}} --enable-squash-merge=false --enable-rebase-merge=false
