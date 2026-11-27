@@ -18,7 +18,7 @@ Each fact has one source. Put the source where a change to the fact always touch
 | Type | Location | Reader | Write | Do not write |
 |---|---|---|---|---|
 | Rules | [Rules](design/overview.md#rules) | All | The guarantees and technical rules that no change can break, and how each rule is enforced | Details of mechanisms |
-| Design | `docs/design/` | Contributors | Mechanisms, decisions, current reasons, rejected options | Methods, fields, call sequences |
+| Design | `docs/design/` | Contributors | Mechanisms, decisions, current reasons, accepted costs, rejected options | Methods, fields, call sequences |
 | Glossary | [Glossary](design/GLOSSARY.md) | All | Design terms and their code names | Explanations of mechanisms |
 | Usage | `README.md` | Users | Install, start, stop, settings, update | Architecture, development process |
 | Development | `docs/development.md` | Contributors and AI | What a contributor must do by hand: complete commands to build, run and check, the folder map, how to reproduce and fix a failed CI job, the branch protection setup | Design reasons, content that a config file or script already gives, behavior that tools handle automatically |

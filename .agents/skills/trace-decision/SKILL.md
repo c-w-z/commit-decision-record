@@ -22,7 +22,7 @@ Docs show only the current state. Commit bodies show why a decision changed (see
    ```
    If the file has a new name, add `--follow`: `git log --follow --format='%h %s' -- docs/design/architecture.md`.
 3. **Find overturned decisions:** `git log --grep='^Supersedes:' --format='%h %s%n%b'`.
-4. **Read each commit that you found:** `git show --stat <hash>`. Read the `Why`, `Rejected`, `Evidence` and `Supersedes` lines and the change.
+4. **Read each commit that you found:** `git show --stat <hash>`. Read the `Why`, `Rejected`, `Cost`, `Evidence` and `Supersedes` lines and the change.
 5. **Go from code to design:**
    1. Find the commit with `git log -L <start>,<end>:<file>` or `git blame -L <start>,<end> <file>`.
    2. Read its `Design:` line. It names the doc section.
