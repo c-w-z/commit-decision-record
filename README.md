@@ -61,8 +61,14 @@ The template gives:
    gh label create type/ci --description "A problem with CI or a check"
    ```
 
-5. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
+5. The maintainer turns off squash merge and rebase merge once:
+
+   ```sh
+   gh repo edit {{OWNER}}/{{REPO}} --enable-squash-merge=false --enable-rebase-merge=false
+   ```
+
+6. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
    - Public repo, or private repo on a paid GitHub plan: use the ruleset.
    - Private repo on GitHub Free: use the Git hook. GitHub Free does not enforce rulesets in private repos.
-6. Replace this README with the usage docs of your project (see Where to write in `docs/doc-rules.md`).
-7. Replace `LICENSE` if your project uses a different license or copyright holder.
+7. Replace this README with the usage docs of your project (see Where to write in `docs/doc-rules.md`).
+8. Replace `LICENSE` if your project uses a different license or copyright holder.

@@ -86,12 +86,6 @@ gh api -X PUT repos/{{OWNER}}/{{REPO}}/rulesets/$id --input .github/rulesets/mai
 git config core.hooksPath .githooks
 ```
 
-The maintainer turns off squash merge and rebase merge once:
-
-```sh
-gh repo edit {{OWNER}}/{{REPO}} --enable-squash-merge=false --enable-rebase-merge=false
-```
-
 If the maintainer must push directly to `main`, set this option in their clone. The option goes only into the local `.git/config`:
 
 ```sh
