@@ -146,8 +146,8 @@ function fakeGh(replies) {
   };
 }
 
-function ghError(text) {
-  return Object.assign(new Error(text), { stderr: text });
+function ghError(text, stdout) {
+  return Object.assign(new Error(text), { stderr: text, stdout });
 }
 
 function commitLine(sha, message) {
@@ -216,6 +216,35 @@ test('GitHub: a cut list that contains the commit confirms the pull request, but
   assert.match(result.stdout, /^--- design doc diff of pull request #5: not read in full: GitHub gave 1 of 4000 changed files$/m);
 });
 
+test('GitHub: a later commits page failure keeps confirmed membership and evidence from the first page', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', ghError('HTTP 502', commitLine(first, 'Why: reason on the first page') + '["truncated')],
+    ['api --paginate repos/o/r/pulls/5/files', ''],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Design', body: 'The PR body.', commits: 2, changed_files: 0 })],
+    ['pr view 5', ''],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- pull request: read, #5$/m);
+  assert.match(result.stdout, /^--- commits of pull request #5: not read in full: HTTP 502$/m);
+  assert.match(result.stdout, /^ {4}Why: reason on the first page$/m);
+  assert.match(result.stdout, /^ {4}The PR body\.$/m);
+  assert.doesNotMatch(result.stdout, /truncated/);
+});
+
+test('GitHub: a later files page failure keeps design patches from the first page', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
+    ['api --paginate repos/o/r/pulls/5/files', ghError('HTTP 502', `${JSON.stringify(['docs/design/architecture.md', '+The first patch.'])}\n`)],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Design', body: '', commits: 1, changed_files: 2 })],
+    ['pr view 5', ''],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- design doc diff of pull request #5: not read in full: HTTP 502\. GitHub gave 1 of 2 changed files$/m);
+  assert.match(result.stdout, /^ {4}\+The first patch\.$/m);
+});
+
 test('GitHub: a complete file list without all design patches is not read in full', () => {
   const result = collectWithGitHub([
     [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
@@ -244,7 +273,7 @@ test('GitHub: when gh cannot reach GitHub, one status line replaces all GitHub b
   const missing = Object.assign(new Error('spawnSync gh ENOENT'), { code: 'ENOENT' });
   for (const [error, reason] of [
     [missing, 'the gh command is not installed'],
-    [ghError('To get started with GitHub CLI, please run:  gh auth login'), 'To get started with GitHub CLI, please run:  gh auth login'],
+    [ghError('To get started with GitHub CLI, please run:\r\ngh auth login'), 'To get started with GitHub CLI, please run: gh auth login'],
   ]) {
     const result = collect({ args: ['src/a.txt', '1', '5'], git: realGit(dir), gh: fakeGh([['repo view', error]]) });
     assert.equal(result.code, 2, result.stdout);

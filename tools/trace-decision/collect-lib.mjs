@@ -53,7 +53,7 @@ function fail(message) {
 }
 
 export function errorText(error) {
-  return (error.stderr || error.message).toString().trim();
+  return (error.stderr || error.message).toString().trim().replace(/[\r\n\u2028\u2029]+/g, ' ') || 'command failed';
 }
 
 function lines(text) {
@@ -199,16 +199,37 @@ function run(args, git, gh) {
   return { code: incomplete ? 2 : 0, stdout: out.join('\n'), stderr: '' };
 }
 
+// gh emits one JSON record per line. A failed page can leave records on stdout.
+function readPaginatedRows(gh, endpoint, query) {
+  let stdout;
+  let error;
+  try {
+    stdout = gh(['api', '--paginate', endpoint, '--jq', query]);
+  } catch (failure) {
+    stdout = failure.stdout?.toString() ?? '';
+    error = errorText(failure);
+  }
+
+  const rows = [];
+  for (const line of lines(stdout)) {
+    try {
+      const row = JSON.parse(line);
+      if (!Array.isArray(row) || typeof row[0] !== 'string') throw new Error('Invalid row in GitHub output');
+      rows.push(row);
+    } catch (failure) {
+      error ??= errorText(failure);
+      break;
+    }
+  }
+  return { rows, error };
+}
+
 function readPullRequest(gh, repo, number) {
   try {
     const pr = JSON.parse(gh(['api', `repos/${repo}/pulls/${number}`]));
-    const commits = lines(
-      gh(['api', '--paginate', `repos/${repo}/pulls/${number}/commits`, '--jq', '.[] | [.sha, .commit.message] | @json']),
-    ).map((line) => {
-      const [sha, message] = JSON.parse(line);
-      return { sha, message };
-    });
-    return { number, title: pr.title, url: pr.html_url, body: pr.body, total: pr.commits, files: pr.changed_files, commits };
+    const { rows, error: commitError } = readPaginatedRows(gh, `repos/${repo}/pulls/${number}/commits`, '.[] | [.sha, .commit.message] | @json');
+    const commits = rows.map(([sha, message]) => ({ sha, message }));
+    return { number, title: pr.title, url: pr.html_url, body: pr.body, total: pr.commits, files: pr.changed_files, commits, commitError };
   } catch (error) {
     return { number, error: errorText(error) };
   }
@@ -257,6 +278,7 @@ function readGitHub(gh, commits, out) {
       const pr = readPullRequest(gh, repo, number);
       if (pr.error) unsure.push(`#${number}: ${pr.error}`);
       else if (pr.commits.some((commit) => commit.sha === hash)) contains.push(pr);
+      else if (pr.commitError) unsure.push(`#${number}: ${pr.commitError}`);
       else if (pr.commits.length < pr.total)
         unsure.push(`#${number}: GitHub gave ${pr.commits.length} of ${pr.total} commits, without this commit`);
     }
@@ -283,10 +305,13 @@ function readGitHub(gh, commits, out) {
     out.push(indent(pr.body));
     texts.push(pr.body ?? '');
 
-    // A cut list can still contain the commit. The pull request is then confirmed, but its other commits are not all read.
-    if (pr.commits.length < pr.total) {
+    // A partial list can confirm membership even when a later page fails.
+    const commitGap = pr.commitError ?? (pr.commits.length < pr.total
+      ? `GitHub gave ${pr.commits.length} of ${pr.total} commits`
+      : undefined);
+    if (commitGap) {
       incomplete = true;
-      out.push(`--- commits of pull request #${pr.number}: not read in full: GitHub gave ${pr.commits.length} of ${pr.total} commits`);
+      out.push(`--- commits of pull request #${pr.number}: not read in full: ${commitGap}`);
     } else out.push(`--- commits of pull request #${pr.number}: read, ${pr.commits.length}`);
     for (const commit of pr.commits) {
       out.push(indent(`commit ${commit.sha}\n${commit.message}`), '');
@@ -294,13 +319,16 @@ function readGitHub(gh, commits, out) {
     }
 
     const source = `design doc diff of pull request #${pr.number}`;
-    try {
-      // All files, so that the script can compare the count with the number of changed files. GitHub gives at most 3000.
-      const all = lines(
-        gh(['api', '--paginate', `repos/${repo}/pulls/${pr.number}/files`, '--jq', '.[] | [.filename, .patch] | @json']),
-      ).map((line) => JSON.parse(line));
+    // Compare the count of all files with the PR total. GitHub gives at most 3000 files.
+    const { rows: all, error: fileError } = readPaginatedRows(
+      gh, `repos/${repo}/pulls/${pr.number}/files`, '.[] | [.filename, .patch] | @json',
+    );
+    if (fileError && all.length === 0) {
+      status(source, fileError);
+    } else {
       const files = all.filter(([name]) => name.startsWith('docs/design/'));
       const gaps = [];
+      if (fileError) gaps.push(fileError);
       if (all.length < pr.files) gaps.push(`GitHub gave ${all.length} of ${pr.files} changed files`);
       const missing = files.filter(([, patch]) => patch == null).length;
       if (missing > 0) gaps.push(`GitHub gave no patch for ${missing} of ${files.length} listed design files`);
@@ -310,8 +338,6 @@ function readGitHub(gh, commits, out) {
       } else if (files.length === 0) out.push(`--- ${source}: read, no change in docs/design/`);
       else status(source);
       for (const [name, patch] of files) out.push(indent(`${name}\n${patch ?? '(GitHub gives no patch for this file)'}`), '');
-    } catch (error) {
-      status(source, errorText(error));
     }
 
     try {
