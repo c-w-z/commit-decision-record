@@ -30,6 +30,7 @@
         "required_status_checks": [
           { "context": "changes", "integration_id": 15368 },
           { "context": "markdown-links", "integration_id": 15368 },
+          { "context": "trace-decision-tool", "integration_id": 15368 },
           { "context": "no-merge-commits", "integration_id": 15368 }
         ]
       }

@@ -6,7 +6,7 @@ Install, settings and general use are in the [README](../README.md). The rules f
 
 <!-- TEMPLATE: List the tools and versions to install, and the environment variables to set. -->
 
-1. Install Git and the tools of the project.
+1. Install Git, [Node.js](https://nodejs.org/) and the tools of the project. AI assistants need Node.js to run the script of the `trace-decision` skill.
 2. Clone the repo, then build and test:
 
    ```sh
@@ -35,6 +35,7 @@ Install, settings and general use are in the [README](../README.md). The rules f
 |---|---|
 | `docs/design/` | Design docs |
 | `tools/markdown-links/` | Markdown link check (see [CI](#ci)) |
+| `tools/trace-decision/` | The script that the `trace-decision` skill runs to collect the commits of code lines (see [CI](#ci)) |
 
 ## CI
 
@@ -44,6 +45,7 @@ When a job fails, reproduce and fix it on your computer:
 
 - `build-and-test`: Run the commands in [Build and test](#build-and-test).
 - `markdown-links`: A relative link points to a missing file, or an anchor matches no heading. Run the link check below, and fix the links that it shows.
+- `trace-decision-tool`: A test of `tools/trace-decision/` fails on one OS. The failed `trace-decision-tool-os` job names the OS. Run the tests below, and fix the script or the test.
 - `no-merge-commits`: The PR branch has a merge commit. Rebase the branch (see [Branches and PRs in CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-prs)).
 
 The link check tool is in `tools/markdown-links/`. To run it on your computer, install [Node.js](https://nodejs.org/). Then run:
@@ -54,6 +56,14 @@ git ls-files -z '*.md' | xargs -0 tools/markdown-links/node_modules/.bin/remark 
 ```
 
 To upgrade the tool, change the versions in `tools/markdown-links/package.json`. Run `npm install --prefix tools/markdown-links`. Commit `package.json` and `package-lock.json` together.
+
+The tests of `tools/trace-decision/` need Node.js and Git, and no packages. Run them after a change to the script:
+
+```sh
+node --test tools/trace-decision/collect.test.mjs
+```
+
+The parameters of the script are in its `--help` text.
 
 ## Branch protection
 
