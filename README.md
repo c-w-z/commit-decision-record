@@ -66,6 +66,11 @@ The template gives:
    gh api -X PATCH repos/{owner}/{repo} -F allow_squash_merge=false -F allow_rebase_merge=false -f merge_commit_title=PR_TITLE -f merge_commit_message=BLANK
    ```
 
+   > [!TIP]
+   > Optional: enable **Automatically delete head branches** in **Settings** → **General** → **Pull Requests**.
+   > GitHub then deletes each head branch after its pull request merges.
+   > See [Managing the automatic deletion of branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-the-automatic-deletion-of-branches).
+
 6. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
    - Public repo, or private repo on a paid GitHub plan: use the ruleset.
    - Private repo on GitHub Free: use the Git hook. GitHub Free does not enforce rulesets in private repos.
