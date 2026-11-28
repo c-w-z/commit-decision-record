@@ -11,7 +11,9 @@ For each local commit, it prints the author date, full message and design doc di
 It uses gh to read the pull request of each commit. This includes the body, the commit
 messages and author dates, the design doc diff, and the issues and comments that the pull
 request and its commits name. It prints links for pull requests, issues and comments.
-It reads at most ${MAX_REFERENCES} references per run. It does not follow references inside those sources.
+It reads at most ${MAX_REFERENCES} references per run, in this order: the issues that the pull request
+closes, links to one comment, references in the pull request body, and references in commit
+messages. It does not follow references inside those sources.
 If gh cannot reach the GitHub repo of the current directory, for example because gh is not
 installed or not logged in, the script prints one "--- github: not read" line and reads only Git.
 
@@ -103,6 +105,22 @@ export function findReferences(text, repo) {
 
 function referenceName({ repo, number, part }) {
   return `${repo}#${number}${part ? ` (#${part})` : ''}`;
+}
+
+// The limit cuts the last references, so the references most likely to explain the decision come first:
+// 0 the issues that the pull request closes, 1 links to one comment, 2 the pull request body, 3 commit messages.
+function rankReferences({ closing, bodies, messages }, repo) {
+  const ranked = [
+    ...findReferences(closing.join('\n'), repo).map((reference) => [0, reference]),
+    ...findReferences(bodies.join('\n'), repo).map((reference) => [2, reference]),
+    ...findReferences(messages.join('\n'), repo).map((reference) => [3, reference]),
+  ].map(([rank, reference]) => [/^(issuecomment-|discussion_r)/.test(reference.part) ? 1 : rank, reference]);
+  const found = new Map();
+  for (const [, reference] of ranked.sort((a, b) => a[0] - b[0])) {
+    const name = referenceName(reference);
+    if (!found.has(name)) found.set(name, reference);
+  }
+  return [...found.values()];
 }
 
 export function realGit(cwd) {
@@ -269,12 +287,12 @@ function readGitHub(gh, commits, out) {
   };
   const confirmed = new Set();
   const candidates = new Set();
-  // The texts in which the script looks for references.
-  const texts = [];
+  // The texts in which the script looks for references, by kind. See rankReferences().
+  const texts = { closing: [], bodies: [], messages: [] };
 
   for (const { hash, message } of commits) {
     out.push(`=== pull request of commit ${hash}`);
-    texts.push(message);
+    texts.messages.push(message);
     let numbers;
     try {
       numbers = lines(gh(['api', '--paginate', `repos/${repo}/commits/${hash}/pulls`, '--jq', '.[].number'])).map(Number);
@@ -318,7 +336,7 @@ function readGitHub(gh, commits, out) {
 
     status('pull request body');
     out.push(indent(pr.body));
-    if (isConfirmed) texts.push(pr.body ?? '');
+    if (isConfirmed) texts.bodies.push(pr.body ?? '');
 
     // A partial list can confirm membership even when a later page fails.
     const commitGap = pr.commitError ?? (pr.commits.length < pr.total
@@ -330,7 +348,7 @@ function readGitHub(gh, commits, out) {
     } else out.push(`--- commits of pull request #${number}: read, ${pr.commits.length}`);
     for (const commit of pr.commits) {
       out.push(indent(`commit ${commit.sha}\ndate: ${commit.date ?? 'unknown'}\n${commit.message}`), '');
-      if (isConfirmed) texts.push(commit.message);
+      if (isConfirmed) texts.messages.push(commit.message);
     }
 
     // The script reads more sources only for a pull request that contains a commit of the lines.
@@ -366,14 +384,14 @@ function readGitHub(gh, commits, out) {
       const urls = gh(['pr', 'view', String(number), '--repo', repo, '--json', 'closingIssuesReferences', '--jq', '.closingIssuesReferences[].url']);
       status(`closing issues of pull request #${number}`);
       out.push(indent(urls));
-      texts.push(urls);
+      texts.closing.push(urls);
     } catch (error) {
       status(`closing issues of pull request #${number}`, errorText(error));
     }
     out.push('');
   }
 
-  const references = findReferences(texts.join('\n'), repo).filter(
+  const references = rankReferences(texts, repo).filter(
     (reference) => !(reference.repo === repo && reference.part === '' && shown.has(reference.number)),
   );
   for (const reference of references.slice(0, MAX_REFERENCES)) {

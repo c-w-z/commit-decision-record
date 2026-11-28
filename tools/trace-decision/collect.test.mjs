@@ -339,6 +339,28 @@ test('--no-github reads only Git', () => {
   assert.doesNotMatch(result.stdout, /github|pull request/);
 });
 
+// A pull request whose body, commits and closing issues all name references.
+function referencesPullRequest(extraReplies = []) {
+  return [
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first') + commitLine('a'.repeat(40), 'chore: other\n\nRefs: #40')],
+    ['api --paginate repos/o/r/pulls/5/files', ''],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Refs', html_url: 'https://github.com/o/r/pull/5', body: 'See #30 and https://github.com/o/r/issues/8#issuecomment-99', commits: 2, changed_files: 0 })],
+    ['pr view 5', 'https://github.com/o/r/issues/7\n'],
+    ...extraReplies,
+  ];
+}
+
+test('GitHub: references are read in the order closing issues, comment links, pull request body, commit messages', () => {
+  const result = collectWithGitHub(referencesPullRequest());
+  assert.deepEqual(result.stdout.match(/^=== reference .*$/gm), [
+    '=== reference o/r#7',
+    '=== reference o/r#8 (#issuecomment-99)',
+    '=== reference o/r#30',
+    '=== reference o/r#40',
+  ]);
+});
+
 test('references are found in keywords, trailers, mentions and URLs', () => {
   const text = [
     'Fixes #12',
