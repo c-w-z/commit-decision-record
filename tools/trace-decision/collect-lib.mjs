@@ -249,12 +249,15 @@ function run(args, git, gh) {
   return { code: incomplete ? 2 : 0, stdout: out.join('\n'), stderr: '' };
 }
 
-// gh emits one JSON record per line. A failed page can leave records on stdout.
-function readPaginatedRows(gh, endpoint, query) {
+// The three GitHub lists (pull requests of a commit, commits of a pull request, files of a pull
+// request) come in pages. gh writes each page before it reads the next, so a failed page can leave
+// complete records on stdout. Returns the records read and the gap: why the list is not complete,
+// or undefined. total is the length that GitHub gives for the list, if it gives one.
+function readList(gh, endpoint, query, total, noun) {
   let stdout;
   let error;
   try {
-    stdout = gh(['api', '--paginate', endpoint, '--jq', query]);
+    stdout = gh(['api', '--paginate', endpoint, '--jq', `.[] | ${query} | @json`]);
   } catch (failure) {
     stdout = failure.stdout?.toString() ?? '';
     error = errorText(failure);
@@ -264,24 +267,31 @@ function readPaginatedRows(gh, endpoint, query) {
   for (const line of lines(stdout)) {
     try {
       const row = JSON.parse(line);
-      if (!Array.isArray(row) || typeof row[0] !== 'string') throw new Error('Invalid row in GitHub output');
+      if (!Array.isArray(row)) throw new Error('Invalid row in GitHub output');
       rows.push(row);
     } catch (failure) {
       error ??= errorText(failure);
       break;
     }
   }
-  return { rows, error };
+  const gaps = [];
+  if (error) gaps.push(error);
+  if (total !== undefined && rows.length < total) gaps.push(`GitHub gave ${rows.length} of ${total} ${noun}`);
+  return { rows, gap: gaps.length > 0 ? gaps.join('. ') : undefined };
+}
+
+// The status of a list follows from what the script read and from the gap.
+function listState(rows, gap) {
+  if (!gap) return 'read';
+  return rows.length === 0 ? 'not read' : 'not read in full';
 }
 
 function readPullRequest(gh, repo, number) {
   try {
     const pr = JSON.parse(gh(['api', `repos/${repo}/pulls/${number}`]));
-    const { rows, error: commitError } = readPaginatedRows(
-      gh, `repos/${repo}/pulls/${number}/commits`, '.[] | [.sha, .commit.author.date, .commit.message] | @json',
-    );
+    const { rows, gap } = readList(gh, `repos/${repo}/pulls/${number}/commits`, '[.sha, .commit.author.date, .commit.message]', pr.commits, 'commits');
     const commits = rows.map(([sha, date, message]) => ({ sha, date, message }));
-    return { number, title: pr.title, url: pr.html_url, body: pr.body, total: pr.commits, files: pr.changed_files, commits, commitError };
+    return { number, title: pr.title, url: pr.html_url, body: pr.body, files: pr.changed_files, commits, commitGap: gap };
   } catch (error) {
     return { number, error: errorText(error) };
   }
@@ -321,26 +331,24 @@ function readGitHub(gh, commits, out, maxReferences) {
   for (const { hash, message } of commits) {
     out.push(`=== pull request of commit ${hash}`);
     texts.messages.push(message);
-    let numbers;
-    try {
-      numbers = lines(gh(['api', '--paginate', `repos/${repo}/commits/${hash}/pulls`, '--jq', '.[].number'])).map(Number);
-    } catch (error) {
-      status('pull request', errorText(error));
+    // A failed later page still gives the pull requests on the pages before it.
+    const lookup = readList(gh, `repos/${repo}/commits/${hash}/pulls`, '[.number]');
+    if (listState(lookup.rows, lookup.gap) === 'not read') {
+      status('pull request', lookup.gap);
       out.push('');
       continue;
     }
 
     // GitHub also lists a pull request that has the commit only through its base branch.
-    // The commit list of the pull request tells them apart, if the list is complete.
+    // The commit list of the pull request tells them apart. The exact SHA in the list proves
+    // membership also when the list is not complete.
     const contains = [];
-    const unsure = [];
-    for (const number of numbers) {
+    const unsure = lookup.gap ? [`the list of pull requests is not complete: ${lookup.gap}`] : [];
+    for (const [number] of lookup.rows) {
       const pr = readOnce(number);
       if (pr.error) unsure.push(`#${number}: ${pr.error}`);
       else if (pr.commits.some((commit) => commit.sha === hash)) contains.push(number);
-      else if (pr.commitError) unsure.push(`#${number}: ${pr.commitError}`);
-      else if (pr.commits.length < pr.total)
-        unsure.push(`#${number}: GitHub gave ${pr.commits.length} of ${pr.total} commits, without this commit`);
+      else if (pr.commitGap) unsure.push(`#${number}: ${pr.commitGap}, without this commit`);
       else continue;
       if (!pr.error) candidates.add(number);
     }
@@ -367,16 +375,11 @@ function readGitHub(gh, commits, out, maxReferences) {
     out.push(indent(body.text));
     if (isConfirmed) texts.bodies.push(body.text);
 
-    // A partial list can confirm membership even when a later page fails.
-    const commitGap = pr.commitError ?? (pr.commits.length < pr.total
-      ? `GitHub gave ${pr.commits.length} of ${pr.total} commits`
-      : undefined);
-    if (commitGap) {
-      incomplete = true;
-      // With no record, the list is not read. With some records, it is read in part.
-      const state = pr.commits.length === 0 ? 'not read' : 'not read in full';
-      out.push(`--- commits of pull request #${number}: ${state}: ${commitGap}`);
-    } else out.push(`--- commits of pull request #${number}: read, ${pr.commits.length}`);
+    const commitState = listState(pr.commits, pr.commitGap);
+    if (pr.commitGap) incomplete = true;
+    out.push(pr.commitGap
+      ? `--- commits of pull request #${number}: ${commitState}: ${pr.commitGap}`
+      : `--- commits of pull request #${number}: read, ${pr.commits.length}`);
     for (const commit of pr.commits) {
       out.push(indent(`commit ${commit.sha}\ndate: ${commit.date ?? 'unknown'}\n${commit.message}`), '');
       if (isConfirmed) texts.messages.push(commit.message);
@@ -389,26 +392,18 @@ function readGitHub(gh, commits, out, maxReferences) {
     }
 
     const source = `design doc diff of pull request #${number}`;
-    // Compare the count of all files with the PR total. GitHub gives at most 3000 files.
-    const { rows: all, error: fileError } = readPaginatedRows(
-      gh, `repos/${repo}/pulls/${number}/files`, '.[] | [.filename, .patch] | @json',
-    );
-    if (fileError && all.length === 0) {
-      status(source, fileError);
-    } else {
-      const files = all.filter(([name]) => name.startsWith('docs/design/'));
-      const gaps = [];
-      if (fileError) gaps.push(fileError);
-      if (all.length < pr.files) gaps.push(`GitHub gave ${all.length} of ${pr.files} changed files`);
-      const missing = files.filter(([, patch]) => patch == null).length;
-      if (missing > 0) gaps.push(`GitHub gave no patch for ${missing} of ${files.length} listed design files`);
-      if (gaps.length > 0) {
-        incomplete = true;
-        out.push(`--- ${source}: not read in full: ${gaps.join('. ')}`);
-      } else if (files.length === 0) out.push(`--- ${source}: read, no change in docs/design/`);
-      else status(source);
-      for (const [name, patch] of files) out.push(indent(`${name}\n${patch ?? '(GitHub gives no patch for this file)'}`), '');
-    }
+    // GitHub gives at most 3000 files, so the script compares the count with the PR total.
+    const list = readList(gh, `repos/${repo}/pulls/${number}/files`, '[.filename, .patch]', pr.files, 'changed files');
+    const files = list.rows.filter(([name]) => name.startsWith('docs/design/'));
+    const missing = files.filter(([, patch]) => patch == null).length;
+    const gaps = [list.gap, missing > 0 ? `GitHub gave no patch for ${missing} of ${files.length} listed design files` : undefined].filter(Boolean);
+    const gap = gaps.length > 0 ? gaps.join('. ') : undefined;
+    if (gap) {
+      incomplete = true;
+      out.push(`--- ${source}: ${listState(list.rows, gap)}: ${gap}`);
+    } else if (files.length === 0) out.push(`--- ${source}: read, no change in docs/design/`);
+    else status(source);
+    for (const [name, patch] of files) out.push(indent(`${name}\n${patch ?? '(GitHub gives no patch for this file)'}`), '');
 
     try {
       // A pull request can close an issue by a manual link. Only GraphQL, so gh pr view, gives these links.

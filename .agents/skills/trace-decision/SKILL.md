@@ -25,7 +25,7 @@ Docs show only the current state. Commit bodies show why a decision changed (see
 4. **Read each commit that you found:** `git show --stat <hash>`. Read the `Why`, `Rejected`, `Cost`, `Evidence` and `Supersedes` lines and the change.
 5. **Go from code to design:**
    1. Read the comments next to the code. If a comment links a design section, follow it with step 2 (Find the history of a doc section).
-   2. Collect the sources of all lines of the decision. The lines of one decision can come from more than one commit. The script prints each commit with its lines, its full message and its design doc diff. Through `gh`, it also prints the pull request of each commit, the other commits and the design doc diff of that pull request, its body, and the issues and comments that they name. Its `--help` text gives the parameters and the exit codes. The command finds the script from the repo root, and `<file>` is a path from the current directory:
+   2. Collect the sources of all lines of the decision. The lines of one decision can come from more than one commit. The script prints each commit with its lines, its full message and its design doc diff. Through `gh`, it also prints the pull request of each commit, with the body, the other commits and the design doc diff. It also prints the issues and comments that they name. Its `--help` text gives the parameters and the exit codes. The command finds the script from the repo root, and `<file>` is a path from the current directory:
       ```bash
       node "$(git rev-parse --show-toplevel)/tools/trace-decision/collect.mjs" <file> <start> <end>
       ```

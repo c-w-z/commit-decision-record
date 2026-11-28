@@ -174,7 +174,7 @@ function collectWithGitHub(replies) {
 test('GitHub: the script reads the pull request, its commits, its design doc diff and the references', () => {
   const body = 'Fixes #7\nSee https://github.com/o/r/issues/8#issuecomment-99 and https://github.com/o/r/pull/9#discussion_r55';
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first') + commitLine('a'.repeat(40), 'chore: other\n\nWhy: reason of the other commit')],
     ['api --paginate repos/o/r/pulls/5/files', `${JSON.stringify(['docs/design/architecture.md', '+The design in the pull request.'])}\n`],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Add a', html_url: 'https://github.com/o/r/pull/5', body, commits: 2, changed_files: 1 })],
@@ -196,7 +196,7 @@ test('GitHub: the script reads the pull request, its commits, its design doc dif
 
 test('GitHub: the script does not take a pull request that has the commit only through its base branch', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine('a'.repeat(40), 'chore: other')],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Other', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 1 })],
   ]);
@@ -206,7 +206,7 @@ test('GitHub: the script does not take a pull request that has the commit only t
 
 test('GitHub: the script does not confirm a pull request when GitHub gives only part of its commits', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine('a'.repeat(40), 'chore: other')],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Large', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 300 })],
   ]);
@@ -217,7 +217,7 @@ test('GitHub: the script does not confirm a pull request when GitHub gives only 
 
 test('GitHub: a cut list that contains the commit confirms the pull request, but is not read in full', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
     ['api --paginate repos/o/r/pulls/5/files', `${JSON.stringify(['src/a.txt', '+one'])}\n`],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Large', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 300, changed_files: 4000 })],
@@ -231,7 +231,7 @@ test('GitHub: a cut list that contains the commit confirms the pull request, but
 
 test('GitHub: a later commits page failure keeps confirmed membership and evidence from the first page', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', ghError('HTTP 502', commitLine(first, 'Why: reason on the first page') + '["truncated')],
     ['api --paginate repos/o/r/pulls/5/files', ''],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Design', body: 'The PR body.', commits: 2, changed_files: 0 })],
@@ -239,7 +239,7 @@ test('GitHub: a later commits page failure keeps confirmed membership and eviden
   ]);
   assert.equal(result.code, 2, result.stdout);
   assert.match(result.stdout, /^--- pull request: read, #5$/m);
-  assert.match(result.stdout, /^--- commits of pull request #5: not read in full: HTTP 502$/m);
+  assert.match(result.stdout, /^--- commits of pull request #5: not read in full: HTTP 502\. GitHub gave 1 of 2 commits$/m);
   assert.match(result.stdout, /^ {4}Why: reason on the first page$/m);
   assert.match(result.stdout, /^ {4}The PR body\.$/m);
   assert.doesNotMatch(result.stdout, /truncated/);
@@ -247,15 +247,15 @@ test('GitHub: a later commits page failure keeps confirmed membership and eviden
 
 test('GitHub: when a later commits page fails before the commit, the pull request stays a candidate and keeps its evidence', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', ghError('HTTP 502', commitLine('a'.repeat(40), 'chore: other\n\nWhy: reason on the first page'))],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Large', html_url: 'https://github.com/o/r/pull/5', body: 'The PR body. See #7.', commits: 300, changed_files: 1 })],
   ]);
   assert.equal(result.code, 2, result.stdout);
-  assert.match(result.stdout, /^--- pull request: not confirmed: #5: HTTP 502$/m);
+  assert.match(result.stdout, /^--- pull request: not confirmed: #5: HTTP 502\. GitHub gave 1 of 300 commits, without this commit$/m);
   assert.match(result.stdout, /^=== candidate pull request #5$/m);
   assert.match(result.stdout, /^ {4}The PR body\. See #7\.$/m);
-  assert.match(result.stdout, /^--- commits of pull request #5: not read in full: HTTP 502$/m);
+  assert.match(result.stdout, /^--- commits of pull request #5: not read in full: HTTP 502\. GitHub gave 1 of 300 commits$/m);
   assert.match(result.stdout, /^ {4}Why: reason on the first page$/m);
   // The script does not read more sources for a candidate, and does not follow its references.
   assert.doesNotMatch(result.stdout, /design doc diff of pull request|=== reference/);
@@ -263,22 +263,43 @@ test('GitHub: when a later commits page fails before the commit, the pull reques
 
 test('GitHub: when the first commits page fails, the commit list is not read, and the body stays', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', ghError('HTTP 502', '')],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'T', html_url: 'https://github.com/o/r/pull/5', body: 'The PR body.', commits: 2, changed_files: 0 })],
   ]);
   assert.equal(result.code, 2, result.stdout);
-  assert.match(result.stdout, /^--- pull request: not confirmed: #5: HTTP 502$/m);
-  assert.match(result.stdout, /^--- commits of pull request #5: not read: HTTP 502$/m);
+  assert.match(result.stdout, /^--- pull request: not confirmed: #5: HTTP 502\. GitHub gave 0 of 2 commits, without this commit$/m);
+  assert.match(result.stdout, /^--- commits of pull request #5: not read: HTTP 502\. GitHub gave 0 of 2 commits$/m);
   assert.match(result.stdout, /^ {4}The PR body\.$/m);
+});
+
+test('GitHub: a later page of the pull request lookup fails, and the pull requests on the first page stay', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, ghError('HTTP 502', '[5]\n')],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first\n\nWhy: reason in the pull request')],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'T', html_url: 'https://github.com/o/r/pull/5', body: 'The PR body.', commits: 1, changed_files: 0 })],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  // #5 contains the commit, but a pull request on a later page can also contain it.
+  assert.match(result.stdout, /^--- pull request: not confirmed: the list of pull requests is not complete: HTTP 502$/m);
+  assert.match(result.stdout, /^=== candidate pull request #5$/m);
+  assert.match(result.stdout, /^ {4}The PR body\.$/m);
+  assert.match(result.stdout, /^ {4}Why: reason in the pull request$/m);
+});
+
+test('GitHub: when the first page of the pull request lookup fails, the pull request is not read', () => {
+  const result = collectWithGitHub([[`api --paginate repos/o/r/commits/${first}/pulls`, ghError('HTTP 502', '')]]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- pull request: not read: HTTP 502$/m);
+  assert.doesNotMatch(result.stdout, /pull request #5/);
 });
 
 test('GitHub: the script reads a pull request once when several commits belong to it', () => {
   const calls = [];
   const gh = fakeGh([
     ['repo view', 'o/r\n'],
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
-    [`api --paginate repos/o/r/commits/${second}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
+    [`api --paginate repos/o/r/commits/${second}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first') + commitLine(second, 'fix: second')],
     ['api --paginate repos/o/r/pulls/5/files', ''],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Both', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 2, changed_files: 0 })],
@@ -294,7 +315,7 @@ test('GitHub: the script reads a pull request once when several commits belong t
 
 test('GitHub: a later files page failure keeps design patches from the first page', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
     ['api --paginate repos/o/r/pulls/5/files', ghError('HTTP 502', `${JSON.stringify(['docs/design/architecture.md', '+The first patch.'])}\n`)],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Design', body: '', commits: 1, changed_files: 2 })],
@@ -307,7 +328,7 @@ test('GitHub: a later files page failure keeps design patches from the first pag
 
 test('GitHub: a complete file list without all design patches is not read in full', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
     ['api --paginate repos/o/r/pulls/5/files', [
       JSON.stringify(['docs/design/architecture.md', '+The available patch.']),
@@ -354,7 +375,7 @@ test('--no-github reads only Git', () => {
 // A pull request whose body, commits and closing issues all name references.
 function referencesPullRequest(extraReplies = []) {
   return [
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first') + commitLine('a'.repeat(40), 'chore: other\n\nRefs: #40')],
     ['api --paginate repos/o/r/pulls/5/files', ''],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Refs', html_url: 'https://github.com/o/r/pull/5', body: 'See #30 and https://github.com/o/r/issues/8#issuecomment-99', commits: 2, changed_files: 0 })],
@@ -394,7 +415,7 @@ test('a pull request body loses the HTML comments and the Checks section, and ke
 
 test('GitHub: the status line names the parts that the script left out of a pull request body', () => {
   const result = collectWithGitHub([
-    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '[5]\n'],
     ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
     ['api --paginate repos/o/r/pulls/5/files', ''],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'T', html_url: 'https://github.com/o/r/pull/5', body: '<!-- hint -->\n## Why\n\nThe reason.\n\n## Checks\n\n- [x] done\n', commits: 1, changed_files: 0 })],
