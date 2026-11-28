@@ -13,6 +13,12 @@ For each commit, it prints the full message and the diff of the design docs (doc
   <end>     Last line, <start> or more.
   --help    Print this text.
 
+Output:
+  A line that starts with "=== " starts the block of a commit.
+  A line "--- <source>: <status>" gives the status of one source: "read" or "not read: <reason>".
+  The text from Git follows its status line, with 4 spaces before each line, so that the text
+  cannot look like a status line.
+
 Exit codes:
   0  The script read all sources.
   1  Wrong input, for example a path that Git does not know or a line out of range.
@@ -39,6 +45,15 @@ class InputError extends Error {}
 
 function fail(message) {
   throw new InputError(message);
+}
+
+function indent(text) {
+  const body = text.replace(/\r/g, '').trimEnd();
+  if (body === '') return '    (empty)';
+  return body
+    .split('\n')
+    .map((line) => `    ${line}`)
+    .join('\n');
 }
 
 // Turns sorted line numbers into "3-5, 9".
@@ -103,7 +118,7 @@ function main(args) {
     out.push(`=== commit ${hash}`, `lines: ${ranges(numbers)}`);
     try {
       const [date, message] = git(['show', '-s', '--date=short', '--format=%ad%x00%B', hash]).split('\0');
-      out.push(`date: ${date}`, '--- message: read', message.trimEnd());
+      out.push(`date: ${date}`, '--- message: read', indent(message));
     } catch (error) {
       notRead = true;
       out.push(`--- message: not read: ${errorText(error)}`);
@@ -112,7 +127,7 @@ function main(args) {
       // :(top) makes the path start at the repo root, also when the script runs in a subdirectory.
       const diff = git(['show', '--no-color', '--no-ext-diff', '--format=', hash, '--', ':(top)docs/design']);
       if (diff.trim() === '') out.push('--- design doc diff: read, no change in docs/design/');
-      else out.push('--- design doc diff: read', diff.trimEnd());
+      else out.push('--- design doc diff: read', indent(diff));
     } catch (error) {
       notRead = true;
       out.push(`--- design doc diff: not read: ${errorText(error)}`);

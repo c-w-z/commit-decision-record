@@ -29,7 +29,7 @@ Docs show only the current state. Commit bodies show why a decision changed (see
       ```bash
       node "$(git rev-parse --show-toplevel)/tools/trace-decision/collect.mjs" <file> <start> <end>
       ```
-      If the script exits with 1, fix the input. If it exits with 2, each status line `--- <source>: not read` marks one source that you did not read. Only these status lines give the status, because a commit message can also contain the words "not read". The other sources in the same block are read.
+      If the script exits with 1, fix the input. If it exits with 2, each status line `--- <source>: not read` marks one source that you did not read. Only these status lines give the status. The text from Git has 4 spaces before each line. The other sources in the same block are read.
    3. Judge each commit block. A commit can also do more than the decision in the code. Its `Why` and its changed design sections can be about a different decision. If a changed section is about the decision, follow it with step 2 (Find the history of a doc section).
    4. Use this step when no comment links a design section about the decision, and no changed design section is about it:
       - Report the sources that you read: the comment and the commits.

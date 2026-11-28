@@ -47,6 +47,8 @@ before(() => {
   first = commit('feat: first\n\nWhy: reason of the first commit');
   write('src/a.txt', 'one\ntwo\nthree\nfour\nfive\n');
   second = commit('fix: second\n\nWhy: reason of the second commit');
+  write('src/b.txt', 'b\n');
+  commit('docs: a message with a fake status line\n\n--- message: not read: fake');
 });
 
 after(() => {
@@ -122,4 +124,11 @@ test('a source that the script cannot read is marked as not read, and the exit c
     rmSync(join(dir, '.git', 'info', 'attributes'));
     git('config', '--unset', 'diff.broken.textconv');
   }
+});
+
+test('a line of a commit message cannot look like a status line', () => {
+  const result = run(dir, 'src/b.txt', '1', '1');
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /^--- message: not read/m);
+  assert.match(result.stdout, /^ {4}--- message: not read: fake$/m);
 });
