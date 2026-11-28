@@ -71,9 +71,11 @@ Only the maintainer can decide to change a rule. If a doc and the code do not ag
 - **Rejected options**: Keep only options that somebody can still propose under the current conditions, with the reason. Delete options that are no longer relevant.
 - **Evidence**: For a measurement or a check, give the environment, the method and the numbers. Put them next to the decision.
 - **Names**: Design docs can name folders, projects and files to show where a structure is. Write design terms as the [glossary](design/GLOSSARY.md) gives them. Add a new term to the glossary first.
-- **Commands**: Give complete commands that a reader can copy and run.
+- **Commands**:
   - Do not write a local path of any person.
-  - Put other paths in a variable first. Use the variable in the commands after it.
+  - In a doc for people, give complete commands that a reader can copy and run. Put other paths in a variable first. Use the variable in the commands after it.
+  - In a skill, a command can have a placeholder, for example `<hash>`. The AI assistant replaces it.
+  - A command in a skill must fail with an error when its input is wrong, for example a path that does not exist or a placeholder that stays. Then empty output means that a valid query found nothing.
 - **Languages**:
   - Write code, comments, docs, commits, PRs and issues in English.
   - AI assistants write explanations and reports in the conversation in the language that the user uses.
@@ -104,3 +106,4 @@ Only the maintainer can decide to change a rule. If a doc and the code do not ag
 | Process docs: plans, audits, logs, retrospectives | Git and the commits cover them. Write the cause of a bug that is not clear as a comment next to the fix |
 | Architecture doc templates (C4, arc42) | Too large for a small project. The architecture doc and the folder map in the development doc are sufficient |
 | Folders by reader type: tutorials, how-to, reference, explanation | Too few docs. Use this split only to choose between the usage doc, the development doc and the parameter help |
+| Commands that a reader can copy and run, also in skills | The AI assistant replaces the placeholders. The variables add lines, and they do not stop a command that ends with empty output |

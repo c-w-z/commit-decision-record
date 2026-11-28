@@ -16,11 +16,11 @@ Docs show only the current state. Commit bodies show why a decision changed (see
    ```bash
    git log --format='%h %ad %s' --date=short -L '/^## Modules/,/^## /:docs/design/architecture.md'
    ```
-   If the heading changed or the section moved, search for a phrase in all files:
+   If the heading changed or the section moved, search for a phrase in all files. Replace `<phrase>` with a quoted sentence from the section. `:(top)` makes the path start at the repo root:
    ```bash
-   git log --format='%h %ad %s' --date=short -S'<phrase>' -- docs
+   git log --format='%h %ad %s' --date=short -S <phrase> -- ':(top)docs'
    ```
-   If the file has a new name, add `--follow`: `git log --follow --format='%h %s' -- docs/design/architecture.md`.
+   If the file has a new name, add `--follow`: `git log --follow --format='%h %s' -- ':(top)docs/design/architecture.md'`.
 3. **Find overturned decisions:** `git log --grep='^Supersedes:' --format='%h %s%n%b'`.
 4. **Read each commit that you found:** `git show --stat <hash>`. Read the `Why`, `Rejected`, `Cost`, `Evidence` and `Supersedes` lines and the change.
 5. **Go from code to design:**
