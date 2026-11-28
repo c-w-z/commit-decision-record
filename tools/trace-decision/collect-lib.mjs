@@ -22,7 +22,10 @@ installed or not logged in, the script prints one "--- github: not read" line an
   --help       Print this text.
 
 Output:
-  A line that starts with "=== " starts a block: a commit, a pull request or a reference.
+  A line that starts with "=== " starts a block: a commit, the pull request of a commit, a pull
+  request or a reference. A pull request block is read once per run. A block named
+  "candidate pull request" holds the evidence of a pull request that the script could not
+  confirm for any commit. The script does not follow the references in a candidate block.
   A line "--- <source>: <status>" gives the status of one source: "read", "not read: <reason>",
   "not read in full: <reason>" or "not confirmed: <reason>". After "not read in full", the
   text is the part that the script read. The text from Git and GitHub follows its status line,
@@ -257,9 +260,17 @@ function readGitHub(gh, commits, out) {
     return true;
   }
 
-  // The texts in which the script looks for references, and the pull requests that it printed.
+  // Membership is a result for each commit. Evidence is a result for each pull request, so the
+  // script reads each pull request once and keeps its evidence also when membership is not known.
+  const pulls = new Map();
+  const readOnce = (number) => {
+    if (!pulls.has(number)) pulls.set(number, readPullRequest(gh, repo, number));
+    return pulls.get(number);
+  };
+  const confirmed = new Set();
+  const candidates = new Set();
+  // The texts in which the script looks for references.
   const texts = [];
-  const printed = new Set();
 
   for (const { hash, message } of commits) {
     out.push(`=== pull request of commit ${hash}`);
@@ -278,35 +289,36 @@ function readGitHub(gh, commits, out) {
     const contains = [];
     const unsure = [];
     for (const number of numbers) {
-      const pr = readPullRequest(gh, repo, number);
+      const pr = readOnce(number);
       if (pr.error) unsure.push(`#${number}: ${pr.error}`);
-      else if (pr.commits.some((commit) => commit.sha === hash)) contains.push(pr);
+      else if (pr.commits.some((commit) => commit.sha === hash)) contains.push(number);
       else if (pr.commitError) unsure.push(`#${number}: ${pr.commitError}`);
       else if (pr.commits.length < pr.total)
         unsure.push(`#${number}: GitHub gave ${pr.commits.length} of ${pr.total} commits, without this commit`);
+      else continue;
+      if (!pr.error) candidates.add(number);
     }
-    if (contains.length > 1) unsure.push(`more than one pull request contains the commit: ${contains.map((pr) => `#${pr.number}`).join(', ')}`);
+    if (contains.length > 1) unsure.push(`more than one pull request contains the commit: ${contains.map((n) => `#${n}`).join(', ')}`);
     if (unsure.length > 0) {
       incomplete = true;
       out.push(`--- pull request: not confirmed: ${unsure.join('; ')}`, '');
-      continue;
-    }
-    if (contains.length === 0) {
+    } else if (contains.length === 0) {
       out.push('--- pull request: read, no pull request contains the commit', '');
-      continue;
+    } else {
+      confirmed.add(contains[0]);
+      out.push(`--- pull request: read, #${contains[0]}`, '');
     }
+  }
 
-    const pr = contains[0];
-    out.push(`--- pull request: read, #${pr.number}`, indent(`${pr.title}\n${pr.url}`));
-    if (printed.has(pr.number)) {
-      out.push(`    The block of pull request #${pr.number} is above.`, '');
-      continue;
-    }
-    printed.add(pr.number);
+  const shown = new Set([...confirmed, ...candidates]);
+  for (const number of shown) {
+    const pr = pulls.get(number);
+    const isConfirmed = confirmed.has(number);
+    out.push(isConfirmed ? `=== pull request #${number}` : `=== candidate pull request #${number}`, indent(`${pr.title}\n${pr.url}`));
 
     status('pull request body');
     out.push(indent(pr.body));
-    texts.push(pr.body ?? '');
+    if (isConfirmed) texts.push(pr.body ?? '');
 
     // A partial list can confirm membership even when a later page fails.
     const commitGap = pr.commitError ?? (pr.commits.length < pr.total
@@ -314,17 +326,23 @@ function readGitHub(gh, commits, out) {
       : undefined);
     if (commitGap) {
       incomplete = true;
-      out.push(`--- commits of pull request #${pr.number}: not read in full: ${commitGap}`);
-    } else out.push(`--- commits of pull request #${pr.number}: read, ${pr.commits.length}`);
+      out.push(`--- commits of pull request #${number}: not read in full: ${commitGap}`);
+    } else out.push(`--- commits of pull request #${number}: read, ${pr.commits.length}`);
     for (const commit of pr.commits) {
       out.push(indent(`commit ${commit.sha}\ndate: ${commit.date ?? 'unknown'}\n${commit.message}`), '');
-      texts.push(commit.message);
+      if (isConfirmed) texts.push(commit.message);
     }
 
-    const source = `design doc diff of pull request #${pr.number}`;
+    // The script reads more sources only for a pull request that contains a commit of the lines.
+    if (!isConfirmed) {
+      out.push('');
+      continue;
+    }
+
+    const source = `design doc diff of pull request #${number}`;
     // Compare the count of all files with the PR total. GitHub gives at most 3000 files.
     const { rows: all, error: fileError } = readPaginatedRows(
-      gh, `repos/${repo}/pulls/${pr.number}/files`, '.[] | [.filename, .patch] | @json',
+      gh, `repos/${repo}/pulls/${number}/files`, '.[] | [.filename, .patch] | @json',
     );
     if (fileError && all.length === 0) {
       status(source, fileError);
@@ -345,18 +363,18 @@ function readGitHub(gh, commits, out) {
 
     try {
       // A pull request can close an issue by a manual link. Only GraphQL, so gh pr view, gives these links.
-      const urls = gh(['pr', 'view', String(pr.number), '--repo', repo, '--json', 'closingIssuesReferences', '--jq', '.closingIssuesReferences[].url']);
-      status(`closing issues of pull request #${pr.number}`);
+      const urls = gh(['pr', 'view', String(number), '--repo', repo, '--json', 'closingIssuesReferences', '--jq', '.closingIssuesReferences[].url']);
+      status(`closing issues of pull request #${number}`);
       out.push(indent(urls));
       texts.push(urls);
     } catch (error) {
-      status(`closing issues of pull request #${pr.number}`, errorText(error));
+      status(`closing issues of pull request #${number}`, errorText(error));
     }
     out.push('');
   }
 
   const references = findReferences(texts.join('\n'), repo).filter(
-    (reference) => !(reference.repo === repo && reference.part === '' && printed.has(reference.number)),
+    (reference) => !(reference.repo === repo && reference.part === '' && shown.has(reference.number)),
   );
   for (const reference of references.slice(0, MAX_REFERENCES)) {
     out.push(`=== reference ${referenceName(reference)}`);

@@ -245,6 +245,41 @@ test('GitHub: a later commits page failure keeps confirmed membership and eviden
   assert.doesNotMatch(result.stdout, /truncated/);
 });
 
+test('GitHub: when a later commits page fails before the commit, the pull request stays a candidate and keeps its evidence', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', ghError('HTTP 502', commitLine('a'.repeat(40), 'chore: other\n\nWhy: reason on the first page'))],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Large', html_url: 'https://github.com/o/r/pull/5', body: 'The PR body. See #7.', commits: 300, changed_files: 1 })],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- pull request: not confirmed: #5: HTTP 502$/m);
+  assert.match(result.stdout, /^=== candidate pull request #5$/m);
+  assert.match(result.stdout, /^ {4}The PR body\. See #7\.$/m);
+  assert.match(result.stdout, /^--- commits of pull request #5: not read in full: HTTP 502$/m);
+  assert.match(result.stdout, /^ {4}Why: reason on the first page$/m);
+  // The script does not read more sources for a candidate, and does not follow its references.
+  assert.doesNotMatch(result.stdout, /design doc diff of pull request|=== reference/);
+});
+
+test('GitHub: the script reads a pull request once when several commits belong to it', () => {
+  const calls = [];
+  const gh = fakeGh([
+    ['repo view', 'o/r\n'],
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    [`api --paginate repos/o/r/commits/${second}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first') + commitLine(second, 'fix: second')],
+    ['api --paginate repos/o/r/pulls/5/files', ''],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Both', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 2, changed_files: 0 })],
+    ['pr view 5', ''],
+  ]);
+  const result = collect({ args: ['src/a.txt', '1', '5'], git: realGit(dir), gh: (args) => (calls.push(args.join(' ')), gh(args)) });
+  assert.equal(result.code, 0, result.stdout);
+  assert.equal(result.stdout.match(/^--- pull request: read, #5$/gm).length, 2);
+  assert.equal(result.stdout.match(/^=== pull request #5$/gm).length, 1);
+  assert.equal(calls.filter((call) => call === 'api repos/o/r/pulls/5').length, 1);
+  assert.equal(calls.filter((call) => call.startsWith('api --paginate repos/o/r/pulls/5/commits')).length, 1);
+});
+
 test('GitHub: a later files page failure keeps design patches from the first page', () => {
   const result = collectWithGitHub([
     [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
