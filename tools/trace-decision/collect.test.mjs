@@ -150,8 +150,8 @@ function ghError(text, stdout) {
   return Object.assign(new Error(text), { stderr: text, stdout });
 }
 
-function commitLine(sha, message) {
-  return `${JSON.stringify([sha, message])}\n`;
+function commitLine(sha, message, date = '2026-01-01T00:00:00Z') {
+  return `${JSON.stringify([sha, date, message])}\n`;
 }
 
 function collectWithGitHub(replies) {
@@ -166,19 +166,19 @@ test('GitHub: the script reads the pull request, its commits, its design doc dif
     ['api --paginate repos/o/r/pulls/5/files', `${JSON.stringify(['docs/design/architecture.md', '+The design in the pull request.'])}\n`],
     ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Add a', html_url: 'https://github.com/o/r/pull/5', body, commits: 2, changed_files: 1 })],
     ['pr view 5', 'https://github.com/o/r/issues/7\n'],
-    ['api repos/o/r/issues/comments/99', 'The reason in a comment.\n'],
-    ['api repos/o/r/pulls/comments/55', 'The reason in a review comment.\n'],
+    ['api repos/o/r/issues/comments/99', JSON.stringify(['https://github.com/o/r/issues/8#issuecomment-99', 'The reason in a comment.'])],
+    ['api repos/o/r/pulls/comments/55', JSON.stringify(['https://github.com/o/r/pull/9#discussion_r55', 'The reason in a review comment.'])],
     ['api repos/o/r/issues/7', JSON.stringify({ title: 'Issue seven', html_url: 'https://github.com/o/r/issues/7', body: 'The reason in issue seven.' })],
   ]);
   assert.equal(result.code, 0, result.stdout);
   assert.match(result.stdout, /^--- pull request: read, #5$/m);
-  assert.match(result.stdout, /^ {4}Why: reason of the other commit$/m);
+  assert.match(result.stdout, /^ {4}commit a{40}\n {4}date: 2026-01-01T00:00:00Z\n {4}chore: other\n {4}\n {4}Why: reason of the other commit$/m);
   assert.match(result.stdout, /^ {4}\+The design in the pull request\.$/m);
   assert.match(result.stdout, /^=== reference o\/r#7\n--- issue: read\n/m);
   assert.equal(result.stdout.match(/^=== reference o\/r#7$/gm).length, 1);
   assert.match(result.stdout, /The reason in issue seven\./);
-  assert.match(result.stdout, /^=== reference o\/r#8 \(#issuecomment-99\)\n--- comment: read\n {4}The reason in a comment\.$/m);
-  assert.match(result.stdout, /^=== reference o\/r#9 \(#discussion_r55\)\n--- review comment: read\n {4}The reason in a review comment\.$/m);
+  assert.match(result.stdout, /^=== reference o\/r#8 \(#issuecomment-99\)\n--- comment: read\n {4}https:\/\/github\.com\/o\/r\/issues\/8#issuecomment-99\n {4}\n {4}The reason in a comment\.$/m);
+  assert.match(result.stdout, /^=== reference o\/r#9 \(#discussion_r55\)\n--- review comment: read\n {4}https:\/\/github\.com\/o\/r\/pull\/9#discussion_r55\n {4}\n {4}The reason in a review comment\.$/m);
 });
 
 test('GitHub: the script does not take a pull request that has the commit only through its base branch', () => {

@@ -42,7 +42,10 @@ Do not use `git log --first-parent`. It hides the commits inside a merged PR.
 
 - Keep the current reason and accepted costs (from the docs) separate from the reason and costs at that time (from commits).
 - If the question is about a downside, say if a design doc or a `Cost:` line lists it.
-- Give the commit hash and date for each reason and cost.
+- Cite each reason and cost by source:
+  - Design doc: link the section. For a code comment, give its file path and line.
+  - Commit: give its hash and author date. Use the date in the collector output. If it is missing, use `git show -s --format=%ad --date=short <hash>` if the commit is local. Otherwise, say that the date is unknown.
+  - Pull request or issue: link its URL. For an issue comment or review comment, link the URL of that comment, not the discussion page.
 - A commit can have no reason or no `Cost:` line. In that case, say that you did not find it. Do not conclude that the author accepted or missed a downside. Do not give a guess from the diff as a fact.
 - Report each source that the script of step 5 marks as "not read" or "not confirmed" as not read, and each source that it marks as "not read in full" as read in part. Do this also when you found a design section. A pull request that is not confirmed is not known.
 - Before you overturn a decision, give the user what you found. The maintainer decides.

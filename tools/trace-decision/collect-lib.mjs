@@ -4,10 +4,11 @@ import { execFileSync } from 'node:child_process';
 export const HELP = `Usage: node tools/trace-decision/collect.mjs [--no-github] <file> <start> <end>
 
 Prints the commits that last changed lines <start> to <end> of <file>.
-For each commit, it prints the full message and the diff of the design docs (docs/design/).
-It also reads GitHub with the gh command: the pull request of each commit, the messages of
-its commits, its design doc diff and its body, and the issues and comments that the pull
-request and the commit messages name. It reads these references, but not the references in them.
+For each local commit, it prints the author date, full message and design doc diff (docs/design/).
+It uses gh to read the pull request of each commit. This includes the body, the commit
+messages and author dates, the design doc diff, and the issues and comments that the pull
+request and its commits name. It prints links for pull requests, issues and comments.
+It does not follow references inside the issues or comments that it reads.
 If gh cannot reach the GitHub repo of the current directory, for example because gh is not
 installed or not logged in, the script prints one "--- github: not read" line and reads only Git.
 
@@ -227,8 +228,10 @@ function readPaginatedRows(gh, endpoint, query) {
 function readPullRequest(gh, repo, number) {
   try {
     const pr = JSON.parse(gh(['api', `repos/${repo}/pulls/${number}`]));
-    const { rows, error: commitError } = readPaginatedRows(gh, `repos/${repo}/pulls/${number}/commits`, '.[] | [.sha, .commit.message] | @json');
-    const commits = rows.map(([sha, message]) => ({ sha, message }));
+    const { rows, error: commitError } = readPaginatedRows(
+      gh, `repos/${repo}/pulls/${number}/commits`, '.[] | [.sha, .commit.author.date, .commit.message] | @json',
+    );
+    const commits = rows.map(([sha, date, message]) => ({ sha, date, message }));
     return { number, title: pr.title, url: pr.html_url, body: pr.body, total: pr.commits, files: pr.changed_files, commits, commitError };
   } catch (error) {
     return { number, error: errorText(error) };
@@ -314,7 +317,7 @@ function readGitHub(gh, commits, out) {
       out.push(`--- commits of pull request #${pr.number}: not read in full: ${commitGap}`);
     } else out.push(`--- commits of pull request #${pr.number}: read, ${pr.commits.length}`);
     for (const commit of pr.commits) {
-      out.push(indent(`commit ${commit.sha}\n${commit.message}`), '');
+      out.push(indent(`commit ${commit.sha}\ndate: ${commit.date ?? 'unknown'}\n${commit.message}`), '');
       texts.push(commit.message);
     }
 
@@ -371,15 +374,15 @@ function readGitHub(gh, commits, out) {
 function readReference(gh, { repo, number, part }, out, status) {
   try {
     if (part.startsWith('issuecomment-')) {
-      const body = gh(['api', `repos/${repo}/issues/comments/${part.slice('issuecomment-'.length)}`, '--jq', '.body']);
+      const [url, body] = JSON.parse(gh(['api', `repos/${repo}/issues/comments/${part.slice('issuecomment-'.length)}`, '--jq', '[.html_url, .body] | @json']));
       status('comment');
-      out.push(indent(body));
+      out.push(indent(`${url}\n\n${body}`));
       return;
     }
     if (part.startsWith('discussion_r')) {
-      const body = gh(['api', `repos/${repo}/pulls/comments/${part.slice('discussion_r'.length)}`, '--jq', '.body']);
+      const [url, body] = JSON.parse(gh(['api', `repos/${repo}/pulls/comments/${part.slice('discussion_r'.length)}`, '--jq', '[.html_url, .body] | @json']));
       status('review comment');
-      out.push(indent(body));
+      out.push(indent(`${url}\n\n${body}`));
       return;
     }
     // The issues endpoint also gives pull requests.
