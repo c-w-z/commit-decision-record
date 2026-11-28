@@ -261,6 +261,18 @@ test('GitHub: when a later commits page fails before the commit, the pull reques
   assert.doesNotMatch(result.stdout, /design doc diff of pull request|=== reference/);
 });
 
+test('GitHub: when the first commits page fails, the commit list is not read, and the body stays', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', ghError('HTTP 502', '')],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'T', html_url: 'https://github.com/o/r/pull/5', body: 'The PR body.', commits: 2, changed_files: 0 })],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- pull request: not confirmed: #5: HTTP 502$/m);
+  assert.match(result.stdout, /^--- commits of pull request #5: not read: HTTP 502$/m);
+  assert.match(result.stdout, /^ {4}The PR body\.$/m);
+});
+
 test('GitHub: the script reads a pull request once when several commits belong to it', () => {
   const calls = [];
   const gh = fakeGh([

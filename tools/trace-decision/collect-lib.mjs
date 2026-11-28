@@ -373,7 +373,9 @@ function readGitHub(gh, commits, out, maxReferences) {
       : undefined);
     if (commitGap) {
       incomplete = true;
-      out.push(`--- commits of pull request #${number}: not read in full: ${commitGap}`);
+      // With no record, the list is not read. With some records, it is read in part.
+      const state = pr.commits.length === 0 ? 'not read' : 'not read in full';
+      out.push(`--- commits of pull request #${number}: ${state}: ${commitGap}`);
     } else out.push(`--- commits of pull request #${number}: read, ${pr.commits.length}`);
     for (const commit of pr.commits) {
       out.push(indent(`commit ${commit.sha}\ndate: ${commit.date ?? 'unknown'}\n${commit.message}`), '');
