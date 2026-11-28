@@ -361,6 +361,21 @@ test('GitHub: references are read in the order closing issues, comment links, pu
   ]);
 });
 
+test('GitHub: --max-references reads the first references and lists the others as not read', () => {
+  const result = collect({ args: ['--max-references', '1', 'src/a.txt', '1', '1'], git: realGit(dir), gh: fakeGh([['repo view', 'o/r\n'], ...referencesPullRequest()]) });
+  assert.equal(result.code, 2, result.stdout);
+  assert.deepEqual(result.stdout.match(/^=== reference .*$/gm), ['=== reference o/r#7']);
+  assert.match(result.stdout, /^--- references: not read: the script reads at most 1, see --max-references: o\/r#8 \(#issuecomment-99\), o\/r#30, o\/r#40$/m);
+});
+
+test('--max-references needs a whole number of 0 or more', () => {
+  for (const value of [[], ['-1'], ['two'], ['1.5']]) {
+    const result = run(dir, 'src/a.txt', '1', '1', '--max-references', ...value);
+    assert.equal(result.status, 1, value.join(' '));
+    assert.match(result.stderr, /^error: --max-references needs a whole number of 0 or more/);
+  }
+});
+
 test('references are found in keywords, trailers, mentions and URLs', () => {
   const text = [
     'Fixes #12',

@@ -1,9 +1,9 @@
 // The logic of collect.mjs. Tests call collect() with a fake gh, so they need no network.
 import { execFileSync } from 'node:child_process';
 
-const MAX_REFERENCES = 30;
+const DEFAULT_MAX_REFERENCES = 30;
 
-export const HELP = `Usage: node tools/trace-decision/collect.mjs [--no-github] <file> <start> <end>
+export const HELP = `Usage: node tools/trace-decision/collect.mjs [--no-github] [--max-references <n>] <file> <start> <end>
 
 Prints the commits that last changed lines <start> to <end> of <file>.
 It follows unchanged lines across files when Git detects a move.
@@ -11,17 +11,19 @@ For each local commit, it prints the author date, full message and design doc di
 It uses gh to read the pull request of each commit. This includes the body, the commit
 messages and author dates, the design doc diff, and the issues and comments that the pull
 request and its commits name. It prints links for pull requests, issues and comments.
-It reads at most ${MAX_REFERENCES} references per run, in this order: the issues that the pull request
+By default, it reads at most ${DEFAULT_MAX_REFERENCES} references per run, in this order: the issues that the pull request
 closes, links to one comment, references in the pull request body, and references in commit
 messages. It does not follow references inside those sources.
 If gh cannot reach the GitHub repo of the current directory, for example because gh is not
 installed or not logged in, the script prints one "--- github: not read" line and reads only Git.
 
-  <file>       Path of the file, from the current directory.
-  <start>      First line, 1 or more.
-  <end>        Last line, <start> or more.
-  --no-github  Read only Git.
-  --help       Print this text.
+  <file>                Path of the file, from the current directory.
+  <start>               First line, 1 or more.
+  <end>                 Last line, <start> or more.
+  --no-github           Read only Git.
+  --max-references <n>  Read at most <n> references, 0 or more. The default is ${DEFAULT_MAX_REFERENCES}.
+                        The script lists the references over the limit as not read.
+  --help                Print this text.
 
 Output:
   A line that starts with "=== " starts a block: a commit, the pull request of a commit, a pull
@@ -145,9 +147,18 @@ export function collect({ args, git, gh }) {
 
 function run(args, git, gh) {
   if (args.includes('--help')) return { code: 0, stdout: HELP, stderr: '' };
-  const github = !args.includes('--no-github');
-  const rest = args.filter((arg) => arg !== '--no-github');
-  if (rest.length !== 3) fail('expected [--no-github] <file> <start> <end>. Run with --help.');
+  let github = true;
+  let maxReferences = DEFAULT_MAX_REFERENCES;
+  const rest = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--no-github') github = false;
+    else if (args[i] === '--max-references') {
+      const text = args[++i];
+      if (!/^\d+$/.test(text ?? '')) fail(`--max-references needs a whole number of 0 or more: ${text ?? '(none)'}`);
+      maxReferences = Number(text);
+    } else rest.push(args[i]);
+  }
+  if (rest.length !== 3) fail('expected [--no-github] [--max-references <n>] <file> <start> <end>. Run with --help.');
 
   const [file, startText, endText] = rest;
   const start = Number(startText);
@@ -216,7 +227,7 @@ function run(args, git, gh) {
     commits.push({ hash, message });
   }
 
-  if (github && commits.length > 0 && readGitHub(gh, commits, out)) incomplete = true;
+  if (github && commits.length > 0 && readGitHub(gh, commits, out, maxReferences)) incomplete = true;
 
   return { code: incomplete ? 2 : 0, stdout: out.join('\n'), stderr: '' };
 }
@@ -260,7 +271,7 @@ function readPullRequest(gh, repo, number) {
 }
 
 // Adds the GitHub blocks to out. Returns true if a source was not read or a pull request was not confirmed.
-function readGitHub(gh, commits, out) {
+function readGitHub(gh, commits, out, maxReferences) {
   let incomplete = false;
   const status = (source, error) => {
     if (error) incomplete = true;
@@ -394,14 +405,14 @@ function readGitHub(gh, commits, out) {
   const references = rankReferences(texts, repo).filter(
     (reference) => !(reference.repo === repo && reference.part === '' && shown.has(reference.number)),
   );
-  for (const reference of references.slice(0, MAX_REFERENCES)) {
+  for (const reference of references.slice(0, maxReferences)) {
     out.push(`=== reference ${referenceName(reference)}`);
     readReference(gh, reference, out, status);
     out.push('');
   }
-  if (references.length > MAX_REFERENCES) {
+  if (references.length > maxReferences) {
     out.push('=== references over the limit');
-    status('references', `the script reads at most ${MAX_REFERENCES}: ${references.slice(MAX_REFERENCES).map(referenceName).join(', ')}`);
+    status('references', `the script reads at most ${maxReferences}, see --max-references: ${references.slice(maxReferences).map(referenceName).join(', ')}`);
     out.push('');
   }
   return incomplete;
