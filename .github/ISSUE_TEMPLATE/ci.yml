@@ -1,4 +1,4 @@
-name: CI
+name: CI workflow
 description: A CI job fails for a reason outside the change, is slow or flaky, or a check is missing
 labels: ["type/ci"]
 body:
