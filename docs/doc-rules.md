@@ -89,27 +89,30 @@ Only the maintainer can decide to change a rule. If a doc and the code do not ag
 
 ## Languages
 
-<!-- TEMPLATE: Choose the language of each row that is not fixed. If the issue and PR templates use a different language, translate the text in `.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md`. -->
+<!-- TEMPLATE: Choose the language of each row that is not fixed.
+If you choose a language other than English for PR bodies and issues, translate their template headings and instructions.
+The templates are in `.github/pull_request_template.md` and `.github/ISSUE_TEMPLATE/`.
+-->
 
 | Text | Language | Fixed |
 |---|---|---|
 | `AGENTS.md`, skills, `CONTRIBUTING.md` and this file | English | Yes |
 | Code and comments | English | No |
 | Commit subjects and PR titles (a PR title becomes the subject of its merge commit) | English | No |
-| Commit bodies, PR bodies and issues | English | No |
-| Issue and PR templates | English | No |
-| Design docs, `README.md` and `docs/development.md` | English | No |
+| Commit bodies, PR bodies, issues, and PR and issue templates | English | No |
+| Design docs, `README.md`, `docs/development.md` and `SECURITY.md` | English | No |
 
 The fixed rows stay in English for two reasons:
 
 - AI assistants follow these files. The word limits in Sentences apply only to English.
 - The template gives the skills in English. A translation costs much work and gives an AI reader nothing.
 
-Some names stay in English in every language, because tools and the English files find them by name:
+Keep these names and keywords in English so tools and English files can find them:
 
 - The commit types and the trailer names, for example `Why:` and `Supersedes:`. The `trace-decision` skill searches for them.
+- GitHub closing keywords, for example `Closes` in `Closes #<issue-number>`.
 - File and folder names.
-- The headings that the English files name:
+- The doc headings that the English files name:
   - Rules in `docs/design/overview.md`.
   - Modules and Where a feature goes in `docs/design/architecture.md`, and the column names of the Modules table.
   - Build and test, CI and Branch protection in `docs/development.md`.
