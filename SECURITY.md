@@ -8,7 +8,7 @@ This project has no releases. Only the latest commit on `main` gets security fix
 
 ## Reporting a vulnerability
 
-Email the maintainer [@{{MAINTAINER}}](https://github.com/{{MAINTAINER}}) at the address on their GitHub profile. Do not open a public issue for a security problem.
+On GitHub, select **Report a vulnerability** on this repository's **Advisories** page. Do not open a public issue for a security problem.
 
 Include:
 

@@ -40,7 +40,6 @@ The template gives:
    | `{{PROJECT_NAME}}` | The display name of the project |
    | `{{OWNER}}` | The GitHub user or organization that owns the repository |
    | `{{REPO}}` | The repository name |
-   | `{{MAINTAINER}}` | The GitHub user name of the maintainer, without `@` |
    | `{{BUILD_COMMAND}}` | The command that builds the project |
    | `{{TEST_COMMAND}}` | The command that runs the tests |
 
@@ -70,5 +69,8 @@ The template gives:
 6. Choose how to protect `main`. Follow the `TEMPLATE:` comment in Branch protection in `docs/development.md`, then do the steps of the method that you keep:
    - Public repo, or private repo on a paid GitHub plan: use the ruleset.
    - Private repo on GitHub Free: use the Git hook. GitHub Free does not enforce rulesets in private repos.
-7. Replace this README with the usage docs of your project (see Where to write in `docs/doc-rules.md`).
-8. Replace `LICENSE` if your project uses a different license or copyright holder.
+7. Set up private vulnerability reporting:
+   - For a public repository, enable **Private vulnerability reporting** in **Settings** → **Advanced Security**.
+   - If the feature is unavailable, replace the reporting instructions in [`SECURITY.md`](SECURITY.md) with a private contact method.
+8. Replace this README with the usage docs of your project (see Where to write in [docs/doc-rules.md](docs/doc-rules.md)).
+9. Replace `LICENSE` if your project uses a different license or copyright holder.
