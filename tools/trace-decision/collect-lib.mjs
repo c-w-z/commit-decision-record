@@ -28,9 +28,9 @@ Exit codes:
   0  The script read all sources.
   1  Wrong input, for example a path that Git does not know or a line out of range.
      The script prints the error and nothing on stdout.
-  2  The script could not read some sources, or could not confirm a pull request.
-     Each such source has a "not read" or "not confirmed" status line.
-     The other sources are read.
+  2  The script could not read a source in full, or could not confirm a pull request.
+     The status line says "not read", "not read in full" or "not confirmed".
+     The output keeps the evidence that the script read.
 
 Example:
   node tools/trace-decision/collect.mjs .githooks/pre-push 3 32
@@ -300,12 +300,15 @@ function readGitHub(gh, commits, out) {
         gh(['api', '--paginate', `repos/${repo}/pulls/${pr.number}/files`, '--jq', '.[] | [.filename, .patch] | @json']),
       ).map((line) => JSON.parse(line));
       const files = all.filter(([name]) => name.startsWith('docs/design/'));
-      if (all.length < pr.files) {
+      const gaps = [];
+      if (all.length < pr.files) gaps.push(`GitHub gave ${all.length} of ${pr.files} changed files`);
+      const missing = files.filter(([, patch]) => patch == null).length;
+      if (missing > 0) gaps.push(`GitHub gave no patch for ${missing} of ${files.length} listed design files`);
+      if (gaps.length > 0) {
         incomplete = true;
-        out.push(`--- ${source}: not read in full: GitHub gave ${all.length} of ${pr.files} changed files`);
+        out.push(`--- ${source}: not read in full: ${gaps.join('. ')}`);
       } else if (files.length === 0) out.push(`--- ${source}: read, no change in docs/design/`);
       else status(source);
-      // GitHub gives no patch for a very large diff.
       for (const [name, patch] of files) out.push(indent(`${name}\n${patch ?? '(GitHub gives no patch for this file)'}`), '');
     } catch (error) {
       status(source, errorText(error));

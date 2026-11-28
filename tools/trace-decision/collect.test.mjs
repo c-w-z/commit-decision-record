@@ -216,6 +216,23 @@ test('GitHub: a cut list that contains the commit confirms the pull request, but
   assert.match(result.stdout, /^--- design doc diff of pull request #5: not read in full: GitHub gave 1 of 4000 changed files$/m);
 });
 
+test('GitHub: a complete file list without all design patches is not read in full', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
+    ['api --paginate repos/o/r/pulls/5/files', [
+      JSON.stringify(['docs/design/architecture.md', '+The available patch.']),
+      JSON.stringify(['docs/design/decisions.md', null]),
+    ].join('\n')],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Design', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 1, changed_files: 2 })],
+    ['pr view 5', ''],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- design doc diff of pull request #5: not read in full: GitHub gave no patch for 1 of 2 listed design files$/m);
+  assert.match(result.stdout, /^ {4}\+The available patch\.$/m);
+  assert.match(result.stdout, /^ {4}docs\/design\/decisions\.md\n {4}\(GitHub gives no patch for this file\)$/m);
+});
+
 test('GitHub: a failed lookup is not read, and the local sources stay', () => {
   const result = collectWithGitHub([[`api --paginate repos/o/r/commits/${first}/pulls`, ghError('HTTP 502')]]);
   assert.equal(result.code, 2, result.stdout);
