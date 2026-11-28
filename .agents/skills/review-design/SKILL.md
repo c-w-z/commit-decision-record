@@ -20,9 +20,9 @@ Before you start, read the Vocabulary and the Principles in `.agents/skills/revi
 Use these sources:
 
 - Findings from `review-pr` (Act on and Consider), review threads and issues.
-- Fix history of the paths. Fix commits that add many lines mark a place where the design was wrong:
+- Fix history of the paths. Fix commits that add many lines mark a place where the design was wrong. `<path>` starts at the repo root. It can also be a deleted path. A path that no commit changed is a wrong path, so the command then fails:
   ```bash
-  git log -30 --format='%h %s' --numstat -- <path>
+  git -C "$(git rev-parse --show-toplevel)" log -30 --format='%h %s' --numstat -- <path> | grep . || { echo "No commit changed this path. Check the path." >&2; false; }
   ```
 - For a branch or a PR, also read its own commits. A later commit that rewrites an earlier commit in the same branch is fix history too:
   ```bash
