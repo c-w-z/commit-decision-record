@@ -23,7 +23,7 @@ Each fact has one source. Put the source where a change to the fact always touch
 | Usage | `README.md` | Users | Install, start, stop, settings, update | Architecture, development process |
 | Development | `docs/development.md` | Contributors and AI | What a contributor must do by hand: complete commands to build, run and check, the folder map, how to reproduce and fix a failed CI job, the branch protection setup | Design reasons, content that a config file or script already gives, behavior that tools handle automatically |
 | Parameters | The `--help` text of programs and scripts | Contributors and AI | What each parameter does, its default value, examples | — |
-| Contribution rules | `CONTRIBUTING.md` | Contributors and AI | Formats and procedures for commits, PRs and issues, the checks before a commit | How to write docs (this file) |
+| Contribution rules | `CONTRIBUTING.md` | Contributors and AI | Formats and procedures for commits, PRs and issues, the checks before a commit, and why its rules reject other options (Rejected approaches) | How to write docs (this file) |
 | Security policy | `SECURITY.md` | People who report a security problem | Supported versions, the private channel, what to include, the scope | Details of vulnerabilities |
 | Comments | Code | People who change that code | Why the code is so, invariants, limits, workarounds for problems in other software | Progress, design reasons across modules (link the design doc) |
 | Agent instructions | `AGENTS.md` | AI | Hard conventions, which doc to read first for each task, where the skills are | Procedure steps (skills), architecture (development doc), the full content of this file (point to the section) |
@@ -35,7 +35,10 @@ To find where a fact goes, ask these questions in this order:
 
 1. Can a reader see it in the code in one minute? Then do not write it.
 2. Is it about one part of the code only, and does it change with that code? Then write a comment.
-3. Is it a reason or a decision? Then write it in a design doc.
+3. Is it a reason or a decision? Then write it in one of these places:
+   - Why a rule of `CONTRIBUTING.md` or this file rejects an option: the Rejected approaches of that file.
+   - Another reason for a rule of these files: next to the rule.
+   - Any other reason or decision: a design doc.
 4. Is it how to do something? Then put it in the usage doc, the development doc, the parameter help or a skill, by reader.
 
 Only `--help` and the commented examples in config files give the full list of parameters and settings. The usage doc and the development doc give the complete command for a task. When they need a list, they point to `--help` or the config file.
