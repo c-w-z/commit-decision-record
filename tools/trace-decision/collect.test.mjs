@@ -44,6 +44,9 @@ before(() => {
   dir = mkdtempSync(join(tmpdir(), 'trace-decision-'));
   git('init', '-q');
   git('config', 'core.autocrlf', 'false');
+  const movedLine = 'Collect the complete commit message and the design diff from Git.\n';
+  const keptLine = 'Print a status line for every source.\n';
+  write('src/collector.txt', movedLine + keptLine);
   write('src/a.txt', 'one\ntwo\nthree\n');
   write('docs/design/architecture.md', '# Architecture\n\nThe first design.\n');
   first = commit('feat: first\n\nWhy: reason of the first commit');
@@ -51,6 +54,9 @@ before(() => {
   second = commit('fix: second\n\nWhy: reason of the second commit');
   write('src/b.txt', 'b\n');
   commit('docs: a message with a fake status line\n\n--- message: not read: fake');
+  write('src/collector.txt', keptLine);
+  write('src/collector-diff.txt', movedLine);
+  commit('refactor: split the collector');
 });
 
 after(() => {
@@ -84,6 +90,13 @@ test('lines from more than one commit list each commit with its lines', () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, new RegExp(`=== commit ${first}\\nlines: 1-3\\n`));
   assert.match(result.stdout, new RegExp(`=== commit ${second}\\nlines: 4-5\\n`));
+});
+
+test('lines split into another file keep their original commit and reason', () => {
+  const result = run(dir, 'src/collector-diff.txt', '1', '1');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, new RegExp(`^=== commit ${first}\\nlines: 1\\n`, 'm'));
+  assert.match(result.stdout, /Why: reason of the first commit/);
 });
 
 test('lines that are not committed are listed as not committed', () => {

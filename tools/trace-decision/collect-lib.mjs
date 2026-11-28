@@ -1,14 +1,17 @@
 // The logic of collect.mjs. Tests call collect() with a fake gh, so they need no network.
 import { execFileSync } from 'node:child_process';
 
+const MAX_REFERENCES = 30;
+
 export const HELP = `Usage: node tools/trace-decision/collect.mjs [--no-github] <file> <start> <end>
 
 Prints the commits that last changed lines <start> to <end> of <file>.
+It follows unchanged lines across files when Git detects a move.
 For each local commit, it prints the author date, full message and design doc diff (docs/design/).
 It uses gh to read the pull request of each commit. This includes the body, the commit
 messages and author dates, the design doc diff, and the issues and comments that the pull
 request and its commits name. It prints links for pull requests, issues and comments.
-It does not follow references inside the issues or comments that it reads.
+It reads at most ${MAX_REFERENCES} references per run. It does not follow references inside those sources.
 If gh cannot reach the GitHub repo of the current directory, for example because gh is not
 installed or not logged in, the script prints one "--- github: not read" line and reads only Git.
 
@@ -39,9 +42,6 @@ Example:
 
 // Git gives this name to lines that are not committed.
 const NOT_COMMITTED = '0'.repeat(40);
-
-// The script reads at most this number of references, so that a large pull request does not make it run for minutes.
-const MAX_REFERENCES = 30;
 
 // An issue or pull request URL with an optional "#" part, or "#12", or "owner/repo#12".
 const REFERENCE =
@@ -137,7 +137,7 @@ function run(args, git, gh) {
   let blame;
   try {
     // --root prints the first commit without a "^" mark.
-    blame = git(['blame', '--root', '--porcelain', '-L', `${start},${end}`, '--', file]);
+    blame = git(['blame', '--root', '-C', '--porcelain', '-L', `${start},${end}`, '--', file]);
   } catch (error) {
     fail(errorText(error));
   }
