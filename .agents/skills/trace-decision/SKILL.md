@@ -25,27 +25,12 @@ Docs show only the current state. Commit bodies show why a decision changed (see
 4. **Read each commit that you found:** `git show --stat <hash>`. Read the `Why`, `Rejected`, `Cost`, `Evidence` and `Supersedes` lines and the change.
 5. **Go from code to design:**
    1. Read the comments next to the code. If a comment links a design section, follow it with step 2 (Find the history of a doc section).
-   2. Find the commits that changed the lines. The lines of one decision can come from more than one commit. Put the file and all lines of the decision in variables first. `--root` prints the hash of the first commit without a `^` mark, so that the hash works in the next commands:
+   2. Collect the commits of all lines of the decision. The lines of one decision can come from more than one commit. The script prints each commit with its lines, its full message and its design doc diff. Its `--help` text gives the parameters and the exit codes. The command finds the script from the repo root, and `<file>` is a path from the current directory:
       ```bash
-      file=.githooks/pre-push
-      start=3
-      end=32
-      git blame --root -L "$start,$end" -- "$file"
+      node "$(git rev-parse --show-toplevel)/tools/trace-decision/collect.mjs" <file> <start> <end>
       ```
-      List the different commits:
-      ```bash
-      git blame --root -s -L "$start,$end" -- "$file" | cut -d' ' -f1 | sort -u
-      ```
-      Do the rest of this step and step 5.3 for each commit in the list. Put the commit in a variable, and read its message. A commit can also do more than the decision in the code, so its `Why` can be about a different decision:
-      ```bash
-      hash=e92a4cd
-      git show -s --format=%B "$hash"
-      ```
-   3. Show the design doc changes of the commit. A commit can also change sections about other decisions. If a changed section is about the decision, follow it with step 2 (Find the history of a doc section). `:(top)` makes the path start at the repo root, so the command also works in a subdirectory:
-      ```bash
-      design=':(top)docs/design'
-      git show --format= "$hash" -- "$design"
-      ```
+      If the script exits with 1, fix the input. If it exits with 2, each status line `--- <source>: not read` marks one source that you did not read. Only these status lines give the status, because a commit message can also contain the words "not read". The other sources in the same block are read.
+   3. Judge each commit block. A commit can also do more than the decision in the code. Its `Why` and its changed design sections can be about a different decision. If a changed section is about the decision, follow it with step 2 (Find the history of a doc section).
    4. Use this step when no comment links a design section about the decision, and no changed design section is about it:
       - Report the sources that you read: the comment and the commits.
       - Say that none of them links a design section about the decision. Do not say that no design section exists.
@@ -59,5 +44,6 @@ Do not use `git log --first-parent`. It hides the commits inside a merged PR.
 - If the question is about a downside, say if a design doc or a `Cost:` line lists it.
 - Give the commit hash and date for each reason and cost.
 - A commit can have no reason or no `Cost:` line. In that case, say that you did not find it. Do not conclude that the author accepted or missed a downside. Do not give a guess from the diff as a fact.
+- Report each source that the script of step 5 marks as "not read" as not read, also when you found a design section.
 - Before you overturn a decision, give the user what you found. The maintainer decides.
 - After the maintainer decides, update the docs as `docs/doc-rules.md` says. Put `Supersedes:` in the commit body.
