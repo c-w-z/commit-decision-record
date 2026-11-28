@@ -71,15 +71,12 @@ Only the maintainer can decide to change a rule. If a doc and the code do not ag
 - **Commands**: Give complete commands that a reader can copy and run.
   - Do not write a local path of any person.
   - Put other paths in a variable first. Use the variable in the commands after it.
-- **Languages**:
-  - Write code, comments, docs, commits, PRs and issues in English.
-  - AI assistants write explanations and reports in the conversation in the language that the user uses.
 - **Format**: Use GitHub Markdown, so that every editor can read and write it.
   - Use lowercase English for file and folder names, with `-` between words, for example `design/architecture.md`. Keep conventional uppercase names, for example `README.md` and `GLOSSARY.md`.
   - Use relative links, for example `[Rules](design/overview.md#rules)`. The anchor is the heading id that GitHub makes.
   - Use `![description](path)` for images. Use `> [!IMPORTANT]` for notes.
   - Do not use syntax that only one editor knows, for example `[[wikilink]]` or `![[embed]]`. Do not add frontmatter to docs.
-- **Sentences** (ASD-STE100):
+- **Sentences** (from ASD-STE100). These rules apply in every language:
   - One sentence gives one fact. One instruction gives one action.
   - Do not join sentences with a semicolon. Write two sentences.
   - Say who does what, for example "the program draws the frame". Use the active voice.
@@ -88,7 +85,36 @@ Only the maintainer can decide to change a rule. If a doc and the code do not ag
   - Do not stack hedges, for example "may possibly help". State a fact directly. Keep one "can" or "possibly" for a fact that is not certain.
   - Do not use marketing adjectives, for example powerful, seamless or efficient. Give a number or a behavior.
   - One paragraph has one topic.
-  - An instruction has 20 words or fewer. A description sentence has 25 words or fewer.
+  - English text only: an instruction has 20 words or fewer. A description sentence has 25 words or fewer.
+
+## Languages
+
+<!-- TEMPLATE: Choose the language of each row that is not fixed. If the issue and PR templates use a different language, translate the text in `.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md`. -->
+
+| Text | Language | Fixed |
+|---|---|---|
+| `AGENTS.md`, skills, `CONTRIBUTING.md` and this file | English | Yes |
+| Code and comments | English | No |
+| Commit subjects and PR titles (a PR title becomes the subject of its merge commit) | English | No |
+| Commit bodies, PR bodies and issues | English | No |
+| Issue and PR templates | English | No |
+| Design docs, `README.md` and `docs/development.md` | English | No |
+
+The fixed rows stay in English for two reasons:
+
+- AI assistants follow these files. The word limits in Sentences apply only to English.
+- The template gives the skills in English. A translation costs much work and gives an AI reader nothing.
+
+Some names stay in English in every language, because tools and the English files find them by name:
+
+- The commit types and the trailer names, for example `Why:` and `Supersedes:`. The `trace-decision` skill searches for them.
+- File and folder names.
+- The headings that the English files name:
+  - Rules in `docs/design/overview.md`.
+  - Modules and Where a feature goes in `docs/design/architecture.md`, and the column names of the Modules table.
+  - Build and test, CI and Branch protection in `docs/development.md`.
+
+AI assistants write explanations and reports in the conversation in the language that the user uses.
 
 ## Rejected approaches
 
@@ -101,3 +127,4 @@ Only the maintainer can decide to change a rule. If a doc and the code do not ag
 | Process docs: plans, audits, logs, retrospectives | Git and the commits cover them. Write the cause of a bug that is not clear as a comment next to the fix |
 | Architecture doc templates (C4, arc42) | Too large for a small project. The architecture doc and the folder map in the development doc are sufficient |
 | Folders by reader type: tutorials, how-to, reference, explanation | Too few docs. Use this split only to choose between the usage doc, the development doc and the parameter help |
+| Word limits of ASD-STE100 for text in other languages | The limits count English words, and the STE dictionary is English. Text in other languages uses only the structure rules in Sentences |

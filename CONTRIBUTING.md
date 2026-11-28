@@ -40,7 +40,7 @@ BREAKING CHANGE: <what breaks and how to migrate>   (use with `!` after the type
 ```
 
 - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `chore`.
-- Write the message in English. Keep doc and section names as they are (`architecture#modules`).
+- Write the message in the languages that [Languages](docs/doc-rules.md#languages) gives. Keep doc and section names as they are (`architecture#modules`).
 - `Evidence` gives facts that the diff and CI do not show. Examples are a measurement, an experiment or the behavior of an external program. Do not write build or test results, or the results of a grep or a link check. CI checks them.
 - `Cost` gives a downside that the chosen option keeps. A later reader then knows that the downside was accepted and not missed. To remove an accepted downside, first overturn the decision.
 - Write each fact in one field only. A common mistake is to give the reason against an alternative in `Why` and again in `Rejected`. Another is to give a downside of the chosen option in `Why` and not in `Cost`.
@@ -59,7 +59,7 @@ The reader of a PR, an issue, a commit body, a comment or a design doc has only 
 Fill every section of [.github/pull_request_template.md](.github/pull_request_template.md).
 
 - **Title:** `<type>[!]: <imperative summary>`, with the types of [Message format](#message-format). The title becomes the subject of the merge commit. If the commits of the PR have different types, use the type of the main decision.
-- **Body:** English. Keep doc and section names as they are.
+- **Body:** Write it in the language that [Languages](docs/doc-rules.md#languages) gives. Keep doc and section names as they are.
 - **Why:** State the problem and why it is a problem. Link the issue or the design section that holds the reason. The reason for each smaller decision goes in the `Why` of its commit.
 - **Summary:** State what the PR does. Do not list every commit.
 - **To reviewer:** Name the main files and the files that only follow the change. Name the commits that only move or rename.

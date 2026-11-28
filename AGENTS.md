@@ -23,7 +23,7 @@ Design docs are in `docs/design/`.
 
 ## Conventions
 
-- Write messages and reports to the user in the language that the user uses in the conversation. Write docs, code, commits, PRs and issues in English (see Languages in `docs/doc-rules.md`).
+- Write messages and reports to the user in the language that the user uses in the conversation. The languages of docs, code, commits, PRs and issues are in Languages in `docs/doc-rules.md`.
 - Make every commit with the `commit` skill.
 - Ask the user before you push or do a different remote action.
 
