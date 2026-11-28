@@ -34,7 +34,6 @@ Rejected: <alternative> — <why not>         (one line for each alternative tha
 Cost: <a downside of the chosen option>     (one line for each known downside that you accept)
 Evidence: <a fact that supports Why>        (only when a fact outside the diff and CI supports Why)
 Supersedes: <the earlier decision>          (only when this commit overturns a decision)
-Design: <doc>#<section>                     (only for code that implements a design decision)
 
 BREAKING CHANGE: <what breaks and how to migrate>   (use with `!` after the type)
 ```
@@ -44,7 +43,6 @@ BREAKING CHANGE: <what breaks and how to migrate>   (use with `!` after the type
 - `Evidence` gives facts that the diff and CI do not show. Examples are a measurement, an experiment or the behavior of an external program. Do not write build or test results, or the results of a grep or a link check. CI checks them.
 - `Cost` gives a downside that the chosen option keeps. A later reader then knows that the downside was accepted and not missed. To remove an accepted downside, first overturn the decision.
 - Write each fact in one field only. A common mistake is to give the reason against an alternative in `Why` and again in `Rejected`. Another is to give a downside of the chosen option in `Why` and not in `Cost`.
-- `Design` connects code to its design section. Do not add it to a docs commit. A docs change is the design itself.
 
 ## Text for outside readers
 
@@ -94,3 +92,4 @@ AI assistants search history with the skill `trace-decision`. They use it only w
 | Rebase merge | It keeps the commits, but their hashes change, and the PR boundary disappears. A merge commit keeps the boundary and the hashes |
 | Merge `main` into a PR branch to fix a conflict | The PR commits go into `main` as they are, so this merge commit stays in the history. It adds a branch that has no relation to a decision. A rebase changes hashes too, but those commits are not in `main` before the PR merges |
 | Never rewrite pushed commits | A review can find a commit that breaks the rules in [Commits](#commits), for example a move and a rewrite in one commit. A new commit cannot split it. Only the commits in `main` must keep their hashes, and the commits of a PR branch are not in `main` before the merge |
+| `Design: <doc>#<section>` line in the commit body | Nobody can change the line after the commit, but a heading can change, so the link breaks. A comment next to the code links the design section, and anybody can fix the comment when the heading changes. Without a comment link, the [`trace-decision`](.agents/skills/trace-decision/SKILL.md) skill goes from the lines to their commits |

@@ -24,9 +24,32 @@ Docs show only the current state. Commit bodies show why a decision changed (see
 3. **Find overturned decisions:** `git log --grep='^Supersedes:' --format='%h %s%n%b'`.
 4. **Read each commit that you found:** `git show --stat <hash>`. Read the `Why`, `Rejected`, `Cost`, `Evidence` and `Supersedes` lines and the change.
 5. **Go from code to design:**
-   1. Find the commit with `git log -L <start>,<end>:<file>` or `git blame -L <start>,<end> <file>`.
-   2. Read its `Design:` line. It names the doc section.
-   3. Go to step 2 for that section.
+   1. Read the comments next to the code. If a comment links a design section, follow it with step 2 (Find the history of a doc section).
+   2. Find the commits that changed the lines. The lines of one decision can come from more than one commit. Put the file and all lines of the decision in variables first. `--root` prints the hash of the first commit without a `^` mark, so that the hash works in the next commands:
+      ```bash
+      file=.githooks/pre-push
+      start=3
+      end=32
+      git blame --root -L "$start,$end" -- "$file"
+      ```
+      List the different commits:
+      ```bash
+      git blame --root -s -L "$start,$end" -- "$file" | cut -d' ' -f1 | sort -u
+      ```
+      Do the rest of this step and step 5.3 for each commit in the list. Put the commit in a variable, and read its message. A commit can also do more than the decision in the code, so its `Why` can be about a different decision:
+      ```bash
+      hash=e92a4cd
+      git show -s --format=%B "$hash"
+      ```
+   3. Show the design doc changes of the commit. A commit can also change sections about other decisions. If a changed section is about the decision, follow it with step 2 (Find the history of a doc section). `:(top)` makes the path start at the repo root, so the command also works in a subdirectory:
+      ```bash
+      design=':(top)docs/design'
+      git show --format= "$hash" -- "$design"
+      ```
+   4. Use this step when no comment links a design section about the decision, and no changed design section is about it:
+      - Report the sources that you read: the comment and the commits.
+      - Say that none of them links a design section about the decision. Do not say that no design section exists.
+      - Give the `Why` of each commit that is about the decision. If no `Why` is about it, say that the sources that you read do not give the reason.
 
 Do not use `git log --first-parent`. It hides the commits inside a merged PR.
 

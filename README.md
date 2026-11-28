@@ -11,7 +11,7 @@ An architecture decision record (ADR) keeps each decision in its own file. This 
 | Where is the reason? | One file for each decision, for example in `docs/adr/` | The body of the commit that makes the change: `Why`, `Rejected`, `Cost`, `Evidence`, `Supersedes` |
 | What happens when a decision is overturned? | A new ADR. The old ADR is marked superseded and stays in the tree | A new commit with `Supersedes:`. The docs change to the new decision. The old reason stays only in Git history |
 | What does an AI agent read? | All ADRs in the tree, also the superseded ones | Only the current docs. The `trace-decision` skill searches history when somebody asks for a reason |
-| How does code point to its decision? | A link that somebody adds by hand | `git blame` finds the commit. Its `Design:` line names the doc section |
+| How does code point to its decision? | A link that somebody adds by hand | A comment next to the code links the design section. Without a comment link, the [`trace-decision`](.agents/skills/trace-decision/SKILL.md) skill goes from the lines to their commits |
 | Can the record and the change get out of step? | Yes. The ADR is a separate file | No. The reason is in the same commit as the change |
 
 Use ADRs if people must read the decisions without Git, for example on a website for stakeholders. The full list of rejected approaches is in [Rejected approaches in docs/doc-rules.md](docs/doc-rules.md#rejected-approaches).
