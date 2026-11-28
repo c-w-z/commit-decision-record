@@ -25,3 +25,9 @@ body:
     attributes:
       label: More information
       description: Reference images, similar examples, or other solutions that you thought about.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `git rev-parse --short HEAD` when the proposal describes behavior in a specific checkout.
+      placeholder: For example, afbe95f
