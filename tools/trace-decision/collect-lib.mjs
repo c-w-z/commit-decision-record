@@ -34,6 +34,9 @@ Output:
   "not read in full: <reason>" or "not confirmed: <reason>". After "not read in full", the
   text is the part that the script read. The text from Git and GitHub follows its status line,
   with 4 spaces before each line, so that the text cannot look like a status line.
+  In a pull request body, the script leaves out the HTML comments, for example the hints of the
+  template, and the "## Checks" section of .github/pull_request_template.md. The status line
+  then names them.
 
 Exit codes:
   0  The script read all sources.
@@ -75,6 +78,20 @@ function indent(text) {
     .split('\n')
     .map((line) => `    ${line}`)
     .join('\n');
+}
+
+// HTML comments, for example the hints of the template, and the Checks section give no reason for a decision.
+// Returns the body without them, and the names of the parts that it left out.
+export function trimBody(body) {
+  let text = (body ?? '').replace(/\r/g, '');
+  const removed = [];
+  const withoutComments = text.replace(/<!--[\s\S]*?-->/g, '');
+  if (withoutComments !== text) removed.push('HTML comments');
+  text = withoutComments;
+  const withoutChecks = text.replace(/^## Checks[ \t]*\n[\s\S]*?(?=^## |(?![\s\S]))/m, '');
+  if (withoutChecks !== text) removed.push('the Checks section');
+  text = withoutChecks.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '');
+  return { text, removed };
 }
 
 // Turns sorted line numbers into "3-5, 9".
@@ -345,9 +362,10 @@ function readGitHub(gh, commits, out, maxReferences) {
     const isConfirmed = confirmed.has(number);
     out.push(isConfirmed ? `=== pull request #${number}` : `=== candidate pull request #${number}`, indent(`${pr.title}\n${pr.url}`));
 
-    status('pull request body');
-    out.push(indent(pr.body));
-    if (isConfirmed) texts.bodies.push(pr.body ?? '');
+    const body = trimBody(pr.body);
+    out.push(body.removed.length > 0 ? `--- pull request body: read, without ${body.removed.join(' and ')}` : '--- pull request body: read');
+    out.push(indent(body.text));
+    if (isConfirmed) texts.bodies.push(body.text);
 
     // A partial list can confirm membership even when a later page fails.
     const commitGap = pr.commitError ?? (pr.commits.length < pr.total

@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collect, findReferences, realGit } from './collect-lib.mjs';
+import { collect, findReferences, realGit, trimBody } from './collect-lib.mjs';
 
 const script = fileURLToPath(new URL('./collect.mjs', import.meta.url));
 const env = {
@@ -350,6 +350,48 @@ function referencesPullRequest(extraReplies = []) {
     ...extraReplies,
   ];
 }
+
+test('a pull request body loses the HTML comments and the Checks section, and keeps the other sections', () => {
+  const body = [
+    '<!-- The reader did not see the conversation. -->',
+    '',
+    '## Why',
+    '',
+    '<!-- Why do you open this PR? -->',
+    '',
+    'The reason. Closes #7',
+    '',
+    '## To reviewer',
+    '',
+    'An earlier version was taken out.',
+    '',
+    '## Validations',
+    '',
+    'The tests pass.',
+    '',
+    '## Checks',
+    '',
+    '- [x] The same commit updates the affected docs',
+  ].join('\r\n');
+  const { text, removed } = trimBody(body);
+  assert.deepEqual(removed, ['HTML comments', 'the Checks section']);
+  assert.equal(text, '## Why\n\nThe reason. Closes #7\n\n## To reviewer\n\nAn earlier version was taken out.\n\n## Validations\n\nThe tests pass.\n\n');
+  assert.deepEqual(trimBody('## Checks\n\n- [ ] a\n\n## Notes\n\nkept'), { text: '## Notes\n\nkept', removed: ['the Checks section'] });
+  assert.deepEqual(trimBody('Plain body.'), { text: 'Plain body.', removed: [] });
+});
+
+test('GitHub: the status line names the parts that the script left out of a pull request body', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
+    ['api --paginate repos/o/r/pulls/5/files', ''],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'T', html_url: 'https://github.com/o/r/pull/5', body: '<!-- hint -->\n## Why\n\nThe reason.\n\n## Checks\n\n- [x] done\n', commits: 1, changed_files: 0 })],
+    ['pr view 5', ''],
+  ]);
+  assert.equal(result.code, 0, result.stdout);
+  assert.match(result.stdout, /^--- pull request body: read, without HTML comments and the Checks section\n {4}## Why\n {4}\n {4}The reason\.$/m);
+  assert.doesNotMatch(result.stdout, /hint|\[x\] done/);
+});
 
 test('GitHub: references are read in the order closing issues, comment links, pull request body, commit messages', () => {
   const result = collectWithGitHub(referencesPullRequest());
