@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collect, findReferences, realGit } from './collect-lib.mjs';
 
 const script = fileURLToPath(new URL('./collect.mjs', import.meta.url));
 const env = {
@@ -34,8 +35,9 @@ function commit(message) {
   return git('rev-parse', 'HEAD');
 }
 
+// The tests of the Git part do not read GitHub. The GitHub tests below give collect() a fake gh.
 function run(cwd, ...args) {
-  return spawnSync(process.execPath, [script, ...args], { cwd, env, encoding: 'utf8' });
+  return spawnSync(process.execPath, [script, '--no-github', ...args], { cwd, env, encoding: 'utf8' });
 }
 
 before(() => {
@@ -131,4 +133,137 @@ test('a line of a commit message cannot look like a status line', () => {
   assert.equal(result.status, 0, result.stderr);
   assert.doesNotMatch(result.stdout, /^--- message: not read/m);
   assert.match(result.stdout, /^ {4}--- message: not read: fake$/m);
+});
+
+// A fake gh. Each reply belongs to the first prefix that the joined arguments start with.
+function fakeGh(replies) {
+  return (args) => {
+    const key = args.join(' ');
+    const found = replies.find(([prefix]) => key.startsWith(prefix));
+    if (!found) throw ghError(`no reply for: ${key}`);
+    if (found[1] instanceof Error) throw found[1];
+    return found[1];
+  };
+}
+
+function ghError(text) {
+  return Object.assign(new Error(text), { stderr: text });
+}
+
+function commitLine(sha, message) {
+  return `${JSON.stringify([sha, message])}\n`;
+}
+
+function collectWithGitHub(replies) {
+  return collect({ args: ['src/a.txt', '1', '1'], git: realGit(dir), gh: fakeGh([['repo view', 'o/r\n'], ...replies]) });
+}
+
+test('GitHub: the script reads the pull request, its commits, its design doc diff and the references', () => {
+  const body = 'Fixes #7\nSee https://github.com/o/r/issues/8#issuecomment-99 and https://github.com/o/r/pull/9#discussion_r55';
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first') + commitLine('a'.repeat(40), 'chore: other\n\nWhy: reason of the other commit')],
+    ['api --paginate repos/o/r/pulls/5/files', `${JSON.stringify(['docs/design/architecture.md', '+The design in the pull request.'])}\n`],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Add a', html_url: 'https://github.com/o/r/pull/5', body, commits: 2, changed_files: 1 })],
+    ['pr view 5', 'https://github.com/o/r/issues/7\n'],
+    ['api repos/o/r/issues/comments/99', 'The reason in a comment.\n'],
+    ['api repos/o/r/pulls/comments/55', 'The reason in a review comment.\n'],
+    ['api repos/o/r/issues/7', JSON.stringify({ title: 'Issue seven', html_url: 'https://github.com/o/r/issues/7', body: 'The reason in issue seven.' })],
+  ]);
+  assert.equal(result.code, 0, result.stdout);
+  assert.match(result.stdout, /^--- pull request: read, #5$/m);
+  assert.match(result.stdout, /^ {4}Why: reason of the other commit$/m);
+  assert.match(result.stdout, /^ {4}\+The design in the pull request\.$/m);
+  assert.match(result.stdout, /^=== reference o\/r#7\n--- issue: read\n/m);
+  assert.equal(result.stdout.match(/^=== reference o\/r#7$/gm).length, 1);
+  assert.match(result.stdout, /The reason in issue seven\./);
+  assert.match(result.stdout, /^=== reference o\/r#8 \(#issuecomment-99\)\n--- comment: read\n {4}The reason in a comment\.$/m);
+  assert.match(result.stdout, /^=== reference o\/r#9 \(#discussion_r55\)\n--- review comment: read\n {4}The reason in a review comment\.$/m);
+});
+
+test('GitHub: the script does not take a pull request that has the commit only through its base branch', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine('a'.repeat(40), 'chore: other')],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Other', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 1 })],
+  ]);
+  assert.equal(result.code, 0, result.stdout);
+  assert.match(result.stdout, /^--- pull request: read, no pull request contains the commit$/m);
+});
+
+test('GitHub: the script does not confirm a pull request when GitHub gives only part of its commits', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine('a'.repeat(40), 'chore: other')],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Large', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 300 })],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- pull request: not confirmed: #5: GitHub gave 1 of 300 commits, without this commit$/m);
+  assert.match(result.stdout, /Why: reason of the first commit/);
+});
+
+test('GitHub: a cut list that contains the commit confirms the pull request, but is not read in full', () => {
+  const result = collectWithGitHub([
+    [`api --paginate repos/o/r/commits/${first}/pulls`, '5\n'],
+    ['api --paginate repos/o/r/pulls/5/commits', commitLine(first, 'feat: first')],
+    ['api --paginate repos/o/r/pulls/5/files', `${JSON.stringify(['src/a.txt', '+one'])}\n`],
+    ['api repos/o/r/pulls/5', JSON.stringify({ title: 'Large', html_url: 'https://github.com/o/r/pull/5', body: '', commits: 300, changed_files: 4000 })],
+    ['pr view 5', ''],
+  ]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- pull request: read, #5$/m);
+  assert.match(result.stdout, /^--- commits of pull request #5: not read in full: GitHub gave 1 of 300 commits$/m);
+  assert.match(result.stdout, /^--- design doc diff of pull request #5: not read in full: GitHub gave 1 of 4000 changed files$/m);
+});
+
+test('GitHub: a failed lookup is not read, and the local sources stay', () => {
+  const result = collectWithGitHub([[`api --paginate repos/o/r/commits/${first}/pulls`, ghError('HTTP 502')]]);
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stdout, /^--- pull request: not read: HTTP 502$/m);
+  assert.match(result.stdout, /Why: reason of the first commit/);
+});
+
+test('GitHub: when gh cannot reach GitHub, one status line replaces all GitHub blocks', () => {
+  const missing = Object.assign(new Error('spawnSync gh ENOENT'), { code: 'ENOENT' });
+  for (const [error, reason] of [
+    [missing, 'the gh command is not installed'],
+    [ghError('To get started with GitHub CLI, please run:  gh auth login'), 'To get started with GitHub CLI, please run:  gh auth login'],
+  ]) {
+    const result = collect({ args: ['src/a.txt', '1', '5'], git: realGit(dir), gh: fakeGh([['repo view', error]]) });
+    assert.equal(result.code, 2, result.stdout);
+    assert.equal(result.stdout.match(/^--- github: not read: (.*)$/gm).length, 1);
+    assert.match(result.stdout, new RegExp(`^--- github: not read: ${reason}$`, 'm'));
+    assert.doesNotMatch(result.stdout, /^=== pull request/m);
+    assert.match(result.stdout, /Why: reason of the first commit/);
+    assert.match(result.stdout, /Why: reason of the second commit/);
+  }
+});
+
+test('--no-github reads only Git', () => {
+  const result = collect({ args: ['--no-github', 'src/a.txt', '1', '1'], git: realGit(dir), gh: fakeGh([]) });
+  assert.equal(result.code, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /github|pull request/);
+});
+
+test('references are found in keywords, trailers, mentions and URLs', () => {
+  const text = [
+    'Fixes #12',
+    'closes: #3',
+    'Refs: #45',
+    'see #9 and #9',
+    'Fixes octo-org/octo-repo#100',
+    'https://github.com/cli/cli/issues/2545#issuecomment-751842548',
+    'https://github.com/o/r/pull/7#discussion_r55.',
+    'color #fff, step 5.3, abc#12',
+  ].join('\n');
+  const names = findReferences(text, 'o/r').map((r) => `${r.repo}#${r.number}${r.part ? `#${r.part}` : ''}`);
+  assert.deepEqual(names, [
+    'o/r#12',
+    'o/r#3',
+    'o/r#45',
+    'o/r#9',
+    'octo-org/octo-repo#100',
+    'cli/cli#2545#issuecomment-751842548',
+    'o/r#7#discussion_r55',
+  ]);
 });

@@ -6,7 +6,7 @@ Install, settings and general use are in the [README](../README.md). The rules f
 
 <!-- TEMPLATE: List the tools and versions to install, and the environment variables to set. -->
 
-1. Install Git, [Node.js](https://nodejs.org/) and the tools of the project. AI assistants need Node.js to run the script of the `trace-decision` skill.
+1. Install Git, [Node.js](https://nodejs.org/) and the tools of the project. AI assistants need Node.js to run the script of the `trace-decision` skill. The script also reads GitHub with [GitHub CLI](https://cli.github.com/) (`gh`), logged in. Without `gh`, it reads only Git.
 2. Clone the repo, then build and test:
 
    ```sh

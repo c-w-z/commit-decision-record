@@ -25,16 +25,16 @@ Docs show only the current state. Commit bodies show why a decision changed (see
 4. **Read each commit that you found:** `git show --stat <hash>`. Read the `Why`, `Rejected`, `Cost`, `Evidence` and `Supersedes` lines and the change.
 5. **Go from code to design:**
    1. Read the comments next to the code. If a comment links a design section, follow it with step 2 (Find the history of a doc section).
-   2. Collect the commits of all lines of the decision. The lines of one decision can come from more than one commit. The script prints each commit with its lines, its full message and its design doc diff. Its `--help` text gives the parameters and the exit codes. The command finds the script from the repo root, and `<file>` is a path from the current directory:
+   2. Collect the sources of all lines of the decision. The lines of one decision can come from more than one commit. The script prints each commit with its lines, its full message and its design doc diff. Through `gh`, it also prints the pull request of each commit, the other commits and the design doc diff of that pull request, its body, and the issues and comments that they name. Its `--help` text gives the parameters and the exit codes. The command finds the script from the repo root, and `<file>` is a path from the current directory:
       ```bash
       node "$(git rev-parse --show-toplevel)/tools/trace-decision/collect.mjs" <file> <start> <end>
       ```
-      If the script exits with 1, fix the input. If it exits with 2, each status line `--- <source>: not read` marks one source that you did not read. Only these status lines give the status. The text from Git has 4 spaces before each line. The other sources in the same block are read.
-   3. Judge each commit block. A commit can also do more than the decision in the code. Its `Why` and its changed design sections can be about a different decision. If a changed section is about the decision, follow it with step 2 (Find the history of a doc section).
+      If the script exits with 1, fix the input. If it exits with 2, each status line `--- <source>: not read` or `--- <source>: not confirmed` marks one source that you did not read. A line `--- <source>: not read in full` marks a source that you read only in part. A line `--- github: not read` means that the script read only Git. Only these status lines give the status. The text from Git and GitHub has 4 spaces before each line. The other sources in the same block are read.
+   3. Judge each block, the commits first. A commit or a pull request can also do more than the decision in the code. Its `Why` and its changed design sections can be about a different decision. If a changed section is about the decision, follow it with step 2 (Find the history of a doc section). Follow a reference that explains the decision. You do not need to read every source that a pull request names.
    4. Use this step when no comment links a design section about the decision, and no changed design section is about it:
-      - Report the sources that you read: the comment and the commits.
+      - Report the sources that you read: the comment, the commits, and the pull requests, issues and comments.
       - Say that none of them links a design section about the decision. Do not say that no design section exists.
-      - Give the `Why` of each commit that is about the decision. If no `Why` is about it, say that the sources that you read do not give the reason.
+      - Give each reason that is about the decision: from the `Why` of a commit, a pull request, an issue or a comment. If none is about it, say that the sources that you read do not give the reason.
 
 Do not use `git log --first-parent`. It hides the commits inside a merged PR.
 
@@ -44,6 +44,6 @@ Do not use `git log --first-parent`. It hides the commits inside a merged PR.
 - If the question is about a downside, say if a design doc or a `Cost:` line lists it.
 - Give the commit hash and date for each reason and cost.
 - A commit can have no reason or no `Cost:` line. In that case, say that you did not find it. Do not conclude that the author accepted or missed a downside. Do not give a guess from the diff as a fact.
-- Report each source that the script of step 5 marks as "not read" as not read, also when you found a design section.
+- Report each source that the script of step 5 marks as "not read" or "not confirmed" as not read, and each source that it marks as "not read in full" as read in part. Do this also when you found a design section. A pull request that is not confirmed is not known.
 - Before you overturn a decision, give the user what you found. The maintainer decides.
 - After the maintainer decides, update the docs as `docs/doc-rules.md` says. Put `Supersedes:` in the commit body.
