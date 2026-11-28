@@ -12,6 +12,7 @@ jobs:
     outputs:
       code: ${{ steps.diff.outputs.code }}
       docs: ${{ steps.diff.outputs.docs }}
+      tools: ${{ steps.diff.outputs.tools }}
     steps:
       # For a PR, HEAD is GitHub's test merge commit: HEAD^1 is the base, HEAD^2 is the PR head.
       # For a push to main from a merged PR, HEAD is the merge commit with the same parents.
@@ -24,32 +25,33 @@ jobs:
         run: |
           # No pipefail: grep -q can exit before printf finishes writing.
           set -eu
-          set_outputs() { echo "code=$1" >> "$GITHUB_OUTPUT"; echo "docs=$2" >> "$GITHUB_OUTPUT"; }
+          set_outputs() { echo "code=$1" >> "$GITHUB_OUTPUT"; echo "docs=$2" >> "$GITHUB_OUTPUT"; echo "tools=$3" >> "$GITHUB_OUTPUT"; }
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             base='HEAD^1'
           elif git rev-parse -q --verify 'HEAD^2' > /dev/null; then
             # The PR branch already had all of main, so the merge commit has the same tree as the PR head, and the PR checks covered it.
             # Otherwise main got other commits after the PR checks, and the combination is new.
-            if git merge-base --is-ancestor 'HEAD^1' 'HEAD^2'; then set_outputs false false; else set_outputs true true; fi
+            if git merge-base --is-ancestor 'HEAD^1' 'HEAD^2'; then set_outputs false false false; else set_outputs true true true; fi
             exit 0
           elif git merge-base --is-ancestor "$BEFORE" HEAD 2> /dev/null; then
             # A direct push: compare with main before the push, because one push can hold several commits.
             base=$BEFORE
           else
             # A force push or a new branch has no earlier state to compare with.
-            set_outputs true true; exit 0
+            set_outputs true true true; exit 0
           fi
           # Without quotePath=false, Git quotes paths with non-ASCII characters, and the patterns below do not match them.
           changed=$(git -c core.quotePath=false diff --name-only "$base" HEAD)
           # A deleted or renamed file of any type can break a relative link in a .md file.
           removed=$(git -c core.quotePath=false diff --name-only --diff-filter=DR "$base" HEAD)
-          code=false; docs=false
+          code=false; docs=false; tools=false
           # Files that the build and the tests do not read. A file type that is not listed counts as code.
           # TEMPLATE: Add the paths of your project that the build and the tests do not read.
-          noncode='\.md$|^\.github/ISSUE_TEMPLATE/|^\.github/rulesets/|^docs/|^tools/markdown-links/|^\.githooks/|^\.gitignore$|^LICENSE$'
+          noncode='\.md$|^\.github/ISSUE_TEMPLATE/|^\.github/rulesets/|^docs/|^tools/markdown-links/|^tools/trace-decision/|^\.githooks/|^\.gitignore$|^LICENSE$'
           if printf '%s' "$changed" | grep -qvE "$noncode"; then code=true; fi
           if printf '%s' "$changed" | grep -qE '\.md$|^tools/markdown-links/|^\.github/workflows/' || [ -n "$removed" ]; then docs=true; fi
-          set_outputs "$code" "$docs"
+          if printf '%s' "$changed" | grep -qE '^tools/trace-decision/|^\.github/workflows/'; then tools=true; fi
+          set_outputs "$code" "$docs" "$tools"
 
   # TEMPLATE: Remove the comment marks, and add the setup step for your language.
   # build-and-test:
@@ -82,6 +84,32 @@ jobs:
           | xargs -0 tools/markdown-links/node_modules/.bin/remark
           --use ./tools/markdown-links/node_modules/remark-validate-links/index.js
           --frail --quiet --no-stdout
+
+  # Runs the tests of the script that the trace-decision skill uses, on each OS that a contributor can use.
+  trace-decision-tool-os:
+    needs: changes
+    if: needs.changes.outputs.tools == 'true'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tools/trace-decision/collect.test.mjs
+
+  # The ruleset requires a check with a fixed name. The matrix job above gives one check for each OS.
+  # This job fails when a test fails on one OS. It is skipped, and counts as passed, when the script did not change.
+  trace-decision-tool:
+    needs: [changes, trace-decision-tool-os]
+    if: ${{ !cancelled() && needs.changes.outputs.tools == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULT: ${{ needs.trace-decision-tool-os.result }}
+        run: test "$RESULT" = success
 
   no-merge-commits:
     if: github.event_name == 'pull_request'
